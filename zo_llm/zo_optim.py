@@ -1,13 +1,5 @@
 import torch
-
-
-class PerturbBase:
-    @property
-    def mu(self) -> float:
-        return self._mu
-
-    def perturb(self, param, index, alpha) -> None:
-        raise NotImplementedError
+from zo_llm.perturb import PerturbBase
 
 
 def forward_zo_estimate(
