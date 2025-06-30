@@ -2,17 +2,17 @@ import torch
 from typing import Callable, TypeAlias
 from functools import partial
 from transformers import AutoModelForCausalLM
-from util import model_helpers
-from util.model_helpers import AllModel
-from grad_estimators.random_grad_estimator import RandomGradientEstimator
+from util import model_utils
+from util.model_utils import AllModel
+from zo_llm.random_grad_estimator import RandomGradientEstimator
 from util.language_utils import (
     LM_TEMPLATE_MAP,
     SUPPORTED_LLM,
     get_lm_loss,
     get_hf_tokenizer,
 )
-from exp_helper.config_parser import MyConfig
-from exp_helper.data import LmClassificationTask, LmGenerationTask
+from util.config_parser import MyConfig
+from util.data_utils import LmClassificationTask, LmGenerationTask
 from dataclasses import dataclass
 
 
@@ -50,7 +50,7 @@ def get_model(
 def get_optimizer(
     model: AllModel, dataset: SupportedDataset, optimizer_setting: MyConfig
 ) -> torch.optim.SGD:
-    trainable_model_parameters = model_helpers.get_trainable_model_parameters(model)
+    trainable_model_parameters = model_utils.get_trainable_model_parameters(model)
     if isinstance(dataset, LmClassificationTask):
         return torch.optim.SGD(
             trainable_model_parameters,
@@ -110,9 +110,9 @@ def get_model_inferences_and_metrics(
         test_accuracy_func = get_lm_loss("f1", tokenizer=tokenizer)
         return (
             ModelInferences(
-                train_inference=model_helpers.model_forward,
+                train_inference=model_utils.model_forward,
                 test_inference=partial(
-                    model_helpers.model_generate, generation_kwargs=generation_kwargs
+                    model_utils.model_generate, generation_kwargs=generation_kwargs
                 ),
             ),
             MetricPacks(
@@ -132,7 +132,7 @@ def get_model_inferences_and_metrics(
             "accuracy", verbalizer_id_map=verbalizer_id_map
         )
         return ModelInferences(
-            model_helpers.model_forward, model_helpers.model_forward
+            model_utils.model_forward, model_utils.model_forward
         ), MetricPacks(
             train_loss=train_criterion,
             train_acc=train_accuracy_func,
@@ -146,7 +146,7 @@ def get_gradient_estimator(
 ) -> RandomGradientEstimator:
     if config.estimator_type == "vanilla":
         return RandomGradientEstimator(
-            parameters=model_helpers.get_trainable_model_parameters(model),
+            parameters=model_utils.get_trainable_model_parameters(model),
             mu=config.mu,
             num_pert=config.num_pert,
             grad_estimate_method=config.grad_estimate_method,

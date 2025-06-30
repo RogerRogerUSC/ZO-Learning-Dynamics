@@ -5,7 +5,7 @@ import torch
 from enum import Enum
 
 from util.language_utils import SUPPORTED_LLM, LmClassificationTask
-from grad_estimators.random_grad_estimator import RandomGradEstimateMethod
+from zo_llm.random_grad_estimator import RandomGradEstimateMethod
 
 file_path = Path(__file__)
 

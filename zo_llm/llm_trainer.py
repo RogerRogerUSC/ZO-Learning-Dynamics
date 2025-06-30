@@ -1,11 +1,12 @@
 from __future__ import annotations
 import random
-from typing import Any, Callable, Iterable, Iterator
+from typing import Any, Callable, Iterable, Iterator, TypeAlias
 import torch
-from grad_estimators.abstract_grad_estimator import AbstractGradientEstimator
-from grad_estimators.random_grad_estimator import RandomGradientEstimator
-from util.typing import CriterionType
+from zo_llm.abstract_grad_estimator import AbstractGradientEstimator
+from zo_llm.random_grad_estimator import RandomGradientEstimator
 from util.metrics import Metric
+
+CriterionType: TypeAlias = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
 
 class LLM_trainer:

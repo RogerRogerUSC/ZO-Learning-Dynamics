@@ -1,8 +1,7 @@
 import torch
-from exp_helper.cli_parser import DeviceSetting
 
 
-def use_device(device_setting: DeviceSetting) -> torch.device:
+def use_device(device_setting) -> torch.device:
     use_cuda = device_setting.cuda and torch.cuda.is_available()
     use_mps = device_setting.mps and torch.backends.mps.is_available()
     if use_cuda:

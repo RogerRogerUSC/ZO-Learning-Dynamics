@@ -3,7 +3,7 @@ from typing import Callable, Iterator, Sequence
 
 import torch
 from torch.nn import Parameter
-from grad_estimators.abstract_grad_estimator import AbstractGradientEstimator
+from zo_llm.abstract_grad_estimator import AbstractGradientEstimator
 
 
 class RandomGradEstimateMethod(Enum):

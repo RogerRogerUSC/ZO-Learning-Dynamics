@@ -1,7 +1,7 @@
 import torch
 from datasets import load_dataset as huggingface_load_dataset
 
-from exp_helper.config_parser import MyConfig
+from util.config_parser import MyConfig
 
 
 from util.language_utils import (
