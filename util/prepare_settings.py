@@ -131,9 +131,7 @@ def get_model_inferences_and_metrics(
         train_accuracy_func = test_accuracy_func = get_lm_loss(
             "accuracy", verbalizer_id_map=verbalizer_id_map
         )
-        return ModelInferences(
-            model_utils.model_forward, model_utils.model_forward
-        ), MetricPacks(
+        return ModelInferences(model_utils.model_forward, model_utils.model_forward), MetricPacks(
             train_loss=train_criterion,
             train_acc=train_accuracy_func,
             test_loss=test_criterion,

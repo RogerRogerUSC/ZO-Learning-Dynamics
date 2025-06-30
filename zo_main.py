@@ -9,7 +9,9 @@ from util import data_utils
 from zo_llm.llm_trainer import LLM_trainer
 
 
-def setup_trainer(config: config_parser.MyConfig, device: torch.device, train_loader) -> LLM_trainer:
+def setup_trainer(
+    config: config_parser.MyConfig, device: torch.device, train_loader
+) -> LLM_trainer:
     model_inferences, metrics = prepare_settings.get_model_inferences_and_metrics(
         config.dataset, config
     )
@@ -39,7 +41,9 @@ def setup_trainer(config: config_parser.MyConfig, device: torch.device, train_lo
 if __name__ == "__main__":
     config = config_parser.parse_config("text_classification.yaml")
     device = torch.device(config.device)
-    train_loader, test_loader = data_utils.get_dataloaders(config, config.seed, config.get_hf_model_name())
+    train_loader, test_loader = data_utils.get_dataloaders(
+        config, config.seed, config.get_hf_model_name()
+    )
     trainer = setup_trainer(config, device, train_loader)
 
     if config.log_to_tensorboard:
