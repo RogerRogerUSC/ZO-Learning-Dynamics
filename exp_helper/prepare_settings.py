@@ -1,7 +1,6 @@
 import torch
 from typing import Callable, TypeAlias
 from functools import partial
-from peft import LoraConfig, get_peft_model
 from transformers import AutoModelForCausalLM
 from util import model_helpers
 from util.model_helpers import AllModel
@@ -155,4 +154,4 @@ def get_gradient_estimator(
             torch_dtype=config.get_torch_dtype(),
         )
     else:
-        raise ValueError(f"Invalid estimator type: {rge_setting.estimator_type}")
+        raise ValueError(f"Invalid estimator type: {config.estimator_type}")

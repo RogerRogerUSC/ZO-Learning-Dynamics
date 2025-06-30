@@ -43,7 +43,7 @@ class LLM_trainer:
 
     def _loss_fn(self, batch_inputs, batch_labels):
         return self.criterion(self.model_inference(self.model, batch_inputs), batch_labels)
-    
+
     def train_one_step(self, iteration: int) -> tuple[float, float]:
         seed = random.randint(0, 1000000)
         train_loss = Metric("Train loss")

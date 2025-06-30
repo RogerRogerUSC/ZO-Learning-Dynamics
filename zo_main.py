@@ -42,9 +42,7 @@ def setup_trainer(config: MyConfig, device: torch.device, train_loader) -> LLM_t
 if __name__ == "__main__":
     config = parse_config("text_classification.yaml")
     device = torch.device(config.device)
-    train_loader, test_loader = get_dataloaders(
-        config, config.seed, config.get_hf_model_name()
-    )
+    train_loader, test_loader = get_dataloaders(config, config.seed, config.get_hf_model_name())
     trainer = setup_trainer(config, device, train_loader)
 
     if config.log_to_tensorboard:
