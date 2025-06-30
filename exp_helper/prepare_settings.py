@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 from typing import Callable, TypeAlias
 from functools import partial
 from peft import LoraConfig, get_peft_model
@@ -13,8 +12,7 @@ from util.language_utils import (
     get_lm_loss,
     get_hf_tokenizer,
 )
-from util.metrics import accuracy
-from exp_helper.cli_parser import ModelSetting, OptimizerSetting, RGESetting, EstimatorType
+from exp_helper.config_parser import MyConfig
 from exp_helper.data import LmClassificationTask, LmGenerationTask
 from dataclasses import dataclass
 
@@ -24,7 +22,7 @@ SupportedDataset: TypeAlias = LmClassificationTask | LmGenerationTask
 
 def get_model(
     dataset: SupportedDataset,
-    model_setting: ModelSetting,
+    model_setting: MyConfig,
     seed: int | None = None,
 ) -> AllModel:
     torch_dtype = model_setting.get_torch_dtype()
@@ -37,42 +35,39 @@ def get_model(
         hf_model_name = model_setting.get_hf_model_name()
         model = AutoModelForCausalLM.from_pretrained(hf_model_name, torch_dtype=torch_dtype)
         model.model_name = model_setting.large_model.value
-        if model_setting and model_setting.lora:
-            # this step initialize lora parameters, which should be under control of seed
-            lora_config = LoraConfig(
-                r=model_setting.lora_r,
-                lora_alpha=model_setting.lora_alpha,
-                target_modules=["q_proj", "v_proj"],
-            )
-            model = get_peft_model(model, lora_config).to(torch_dtype)
+        # if model_setting and model_setting.lora:
+        #     # this step initialize lora parameters, which should be under control of seed
+        #     lora_config = LoraConfig(
+        #         r=model_setting.lora_r,
+        #         lora_alpha=model_setting.lora_alpha,
+        #         target_modules=["q_proj", "v_proj"],
+        #     )
+        #     model = get_peft_model(model, lora_config).to(torch_dtype)
         return model
     else:
         raise Exception(f"Dataset {dataset} is not supported")
 
 
 def get_optimizer(
-    model: AllModel, dataset: SupportedDataset, optimizer_setting: OptimizerSetting
+    model: AllModel, dataset: SupportedDataset, optimizer_setting: MyConfig
 ) -> torch.optim.SGD:
     trainable_model_parameters = model_helpers.get_trainable_model_parameters(model)
-    if optimizer_setting.optimizer == "sgd":
-        if isinstance(dataset, LmClassificationTask):
-            return torch.optim.SGD(
-                trainable_model_parameters,
-                lr=optimizer_setting.lr,
-                momentum=0,
-                weight_decay=5e-4,
-            )
-        elif isinstance(dataset, LmGenerationTask):
-            return torch.optim.SGD(
-                trainable_model_parameters,
-                lr=optimizer_setting.lr,
-                momentum=0,
-                weight_decay=0,
-            )
-        else:
-            raise Exception(f"dataset {dataset.value} not supported")
+    if isinstance(dataset, LmClassificationTask):
+        return torch.optim.SGD(
+            trainable_model_parameters,
+            lr=optimizer_setting.lr,
+            momentum=0,
+            weight_decay=5e-4,
+        )
+    elif isinstance(dataset, LmGenerationTask):
+        return torch.optim.SGD(
+            trainable_model_parameters,
+            lr=optimizer_setting.lr,
+            momentum=0,
+            weight_decay=0,
+        )
     else:
-        raise Exception(f"optimizer {optimizer_setting.optimizer} not supported")
+        raise Exception(f"dataset {dataset.value} not supported")
 
 
 @dataclass
@@ -90,7 +85,7 @@ class MetricPacks:
 
 
 def get_model_inferences_and_metrics(
-    dataset: SupportedDataset, model_setting: ModelSetting
+    dataset: SupportedDataset, model_setting: MyConfig
 ) -> tuple[ModelInferences, MetricPacks]:
     hf_model_name = model_setting.get_hf_model_name()
     tokenizer = get_hf_tokenizer(hf_model_name)
@@ -148,20 +143,16 @@ def get_model_inferences_and_metrics(
 
 
 def get_gradient_estimator(
-    model: AllModel, device: torch.device, rge_setting: RGESetting, model_setting: ModelSetting
+    model: AllModel, device: torch.device, config: MyConfig
 ) -> RandomGradientEstimator:
-    no_optim = not rge_setting.optim
-    if rge_setting.estimator_type == EstimatorType.vanilla:
+    if config.estimator_type == "vanilla":
         return RandomGradientEstimator(
             parameters=model_helpers.get_trainable_model_parameters(model),
-            mu=rge_setting.mu,
-            num_pert=rge_setting.num_pert,
-            grad_estimate_method=rge_setting.grad_estimate_method,
+            mu=config.mu,
+            num_pert=config.num_pert,
+            grad_estimate_method=config.grad_estimate_method,
             device=device,
-            torch_dtype=model_setting.get_torch_dtype(),
-            # To save memory consumption, we have to use parameter-wise perturb + no_optim together.
-            sgd_only_no_optim=no_optim,
-            paramwise_perturb=no_optim,
+            torch_dtype=config.get_torch_dtype(),
         )
     else:
         raise ValueError(f"Invalid estimator type: {rge_setting.estimator_type}")

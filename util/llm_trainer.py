@@ -1,6 +1,5 @@
 from __future__ import annotations
 import random
-from collections import deque
 from typing import Any, Callable, Iterable, Iterator
 import torch
 from grad_estimators.abstract_grad_estimator import AbstractGradientEstimator
@@ -42,6 +41,9 @@ class LLM_trainer:
             for p in self.optim.param_groups:
                 p["lr"] = lr
 
+    def _loss_fn(self, batch_inputs, batch_labels):
+        return self.criterion(self.model_inference(self.model, batch_inputs), batch_labels)
+    
     def train_one_step(self, iteration: int) -> tuple[float, float]:
         seed = random.randint(0, 1000000)
         train_loss = Metric("Train loss")
@@ -65,7 +67,7 @@ class LLM_trainer:
                     batch_inputs, labels, self._loss_fn, seed
                 )
                 self.grad_estimator.update_model_given_seed_and_grad(
-                    self.optimizer, [seed], [grad_scalars]
+                    self.optim, [seed], [grad_scalars]
                 )
             else:
                 # generate grads and update model's gradient
@@ -73,7 +75,7 @@ class LLM_trainer:
                 grad_scalars = self.grad_estimator.compute_grad(
                     batch_inputs, labels, self._loss_fn, seed
                 )
-                self.optimizer.step()
+                self.optim.step()
 
             pred = self.model_inference(self.model, batch_inputs)
             train_loss.update(self.criterion(pred, labels))
@@ -84,25 +86,25 @@ class LLM_trainer:
     def eval_model(self, test_loader: Iterable[Any]) -> tuple[float, float]:
         self.model.eval()
         eval_loss = Metric("Eval loss")
-        eval_accuracy = Metric("Eval accuracy")
+        eval_acc = Metric("Eval acc")
         with torch.no_grad():
             for _, (batch_inputs, batch_labels) in enumerate(test_loader):
                 if (
                     self.device != torch.device("cpu")
                     or self.gradient_estimator.torch_dtype != torch.float32
                 ):
-                    batch_inputs = batch_inputs.to(self.device, self.gradient_estimator.torch_dtype)
+                    batch_inputs = batch_inputs.to(self.device, self.grad_estimator.torch_dtype)
                     # In generation mode, labels are not tensor.
                     if isinstance(batch_labels, torch.Tensor):
                         batch_labels = batch_labels.to(self.device)
-                pred = self.server_model_inference(self.server_model, batch_inputs)
-                eval_loss.update(self.server_criterion(pred, batch_labels))
-                eval_accuracy.update(self.server_accuracy_func(pred, batch_labels))
+                pred = self.model_inference(self.model, batch_inputs)
+                eval_loss.update(self.criterion(pred, batch_labels))
+                eval_acc.update(self.accuracy_func(pred, batch_labels))
         print(
-            f"\nEvaluation(Iteration {self.seed_grad_records.current_iteration}): ",
-            f"Eval Loss:{eval_loss.avg:.4f}, " f"Accuracy:{eval_accuracy.avg * 100:.2f}%",
+            # f"\nEvaluation(Iteration {self.seed_grad_records.current_iteration}): ",
+            f"Eval Loss:{eval_loss.avg:.4f}, Eval Acc:{eval_acc.avg * 100:.2f}%",
         )
-        return eval_loss.avg, eval_accuracy.avg
+        return eval_loss.avg, eval_acc.avg
 
     def _get_train_batch_iterator(self) -> Iterator:
         # NOTE: used only in init, will generate an infinite iterator from dataloader

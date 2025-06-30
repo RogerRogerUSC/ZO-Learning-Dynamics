@@ -22,8 +22,8 @@ class RandomGradientEstimator(AbstractGradientEstimator):
         normalize_perturbation: bool = False,
         device: str | torch.device | None = None,
         torch_dtype: torch.dtype = torch.float32,
-        paramwise_perturb: bool = False,
-        sgd_only_no_optim: bool = False,
+        paramwise_perturb: bool = True,
+        sgd_only_no_optim: bool = True,
     ):
         self.parameters_list: list[Parameter] = [p for p in parameters if p.requires_grad]
         self.total_dimensions = sum([p.numel() for p in self.parameters_list])
