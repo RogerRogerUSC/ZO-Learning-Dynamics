@@ -3,7 +3,8 @@ import random
 from typing import Any, Callable, Iterable, Iterator, TypeAlias
 import torch
 from zo_llm.abstract_grad_estimator import AbstractGradientEstimator
-from zo_llm.random_grad_estimator import RandomGradientEstimator
+
+from zo_llm.zo_optim import ZOOptimizer
 from util.metrics import Metric
 
 CriterionType: TypeAlias = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
@@ -29,13 +30,18 @@ class LLM_trainer:
         accuracy_func,
         optimizer: torch.optim.Optimizer,
         grad_estimator: AbstractGradientEstimator,
+        zo_optimizer: ZOOptimizer,
     ) -> None:
         self.model = model
         self.model_inference = model_inference
         self.criterion = criterion
         self.accuracy_func = accuracy_func
+
+        # TODO remove optim and grad_estimator when possible
         self.optim = optimizer
         self.grad_estimator = grad_estimator
+
+        self.zo_optimizer = zo_optimizer
 
     def set_lr(self, lr: float) -> None:
         if self.model and self.optim:
@@ -60,23 +66,31 @@ class LLM_trainer:
                 batch_inputs = batch_inputs.to(self.device, self.grad_estimator.torch_dtype)
                 if isinstance(labels, torch.Tensor):  # In generation mode, labels are not tensor.
                     labels = labels.to(self.device)
-            grad_scalars: torch.Tensor
-            if self.grad_estimator.sgd_only_no_optim and isinstance(
-                self.grad_estimator, RandomGradientEstimator
-            ):
-                grad_scalars = self.grad_estimator._zo_grad_estimate_paramwise(
-                    batch_inputs, labels, self._loss_fn, seed
-                )
-                self.grad_estimator.update_model_given_seed_and_grad(
-                    self.optim, [seed], [grad_scalars]
-                )
-            else:
-                # generate grads and update model's gradient
-                # The length of grad_scalars is number of perturbations
-                grad_scalars = self.grad_estimator.compute_grad(
-                    batch_inputs, labels, self._loss_fn, seed
-                )
-                self.optim.step()
+
+            def loss_fn(model):
+                return self.criterion(self.model_inference(model, batch_inputs), labels)
+
+            self.zo_optimizer.update_model_given_seed(
+                lr=self.optim.defaults["lr"], seed=seed, loss_fn=loss_fn
+            )
+
+            # grad_scalars: torch.Tensor
+            # if self.grad_estimator.sgd_only_no_optim and isinstance(
+            #     self.grad_estimator, RandomGradientEstimator
+            # ):
+            #     grad_scalars = self.grad_estimator._zo_grad_estimate_paramwise(
+            #         batch_inputs, labels, self._loss_fn, seed
+            #     )
+            #     self.grad_estimator.update_model_given_seed_and_grad(
+            #         self.optim, [seed], [grad_scalars]
+            #     )
+            # else:
+            #     # generate grads and update model's gradient
+            #     # The length of grad_scalars is number of perturbations
+            #     grad_scalars = self.grad_estimator.compute_grad(
+            #         batch_inputs, labels, self._loss_fn, seed
+            #     )
+            #     self.optim.step()
 
             pred = self.model_inference(self.model, batch_inputs)
             train_loss.update(self.criterion(pred, labels))

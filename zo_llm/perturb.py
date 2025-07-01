@@ -5,12 +5,10 @@ class PerturbBase:
     def get_seed(self):
         if self._seed is None:
             raise ValueError("Forget to set a seed?")
-        seed = self._seed
-        self._seed = None
-        return seed
+        return self._seed
 
     def set_seed(self, seed: int):
-        self.seed = seed
+        self._seed = seed
 
     @property
     def mu(self) -> float:
@@ -29,7 +27,7 @@ class PerturbBase:
         raise NotImplementedError
 
 
-class GaussianPerturb:
+class GaussianPerturb(PerturbBase):
     def __init__(self, device, mu=1e-4):
         self._mu = mu
         self._device = device

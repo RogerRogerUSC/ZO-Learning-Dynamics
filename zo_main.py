@@ -7,6 +7,7 @@ from util import prepare_settings
 from util import config_parser
 from util import data_utils
 from zo_llm.llm_trainer import LLM_trainer
+from zo_llm.zo_optim import ZOOptimizer
 
 
 def setup_trainer(
@@ -19,6 +20,7 @@ def setup_trainer(
     model = prepare_settings.get_model(
         dataset=config.dataset, model_setting=config, seed=config.seed
     ).to(device)
+    # TODO delete `optimizer` and `grad_estimator`
     optimizer = prepare_settings.get_optimizer(
         model=model, dataset=config.dataset, optimizer_setting=config
     )
@@ -27,6 +29,7 @@ def setup_trainer(
         device=device,
         config=config,
     )
+    zo_optimizer = ZOOptimizer.from_config(config, model=model)
     trainer.set_model_and_criterion(
         model,
         model_inferences.test_inference,
@@ -34,11 +37,13 @@ def setup_trainer(
         metrics.test_acc,
         optimizer,
         grad_estimator,
+        zo_optimizer,
     )
     return trainer
 
 
 if __name__ == "__main__":
+    # TODO make args for config file.
     config = config_parser.parse_config("text_classification.yaml")
     device = torch.device(config.device)
     train_loader, test_loader = data_utils.get_dataloaders(
