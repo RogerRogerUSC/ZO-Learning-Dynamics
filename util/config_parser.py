@@ -5,9 +5,13 @@ import torch
 from enum import Enum
 
 from util.language_utils import SUPPORTED_LLM, LmClassificationTask
-from zo_llm.random_grad_estimator import RandomGradEstimateMethod
 
 file_path = Path(__file__)
+
+
+class RandomGradEstimateMethod(Enum):
+    rge_central = "rge-central"
+    rge_forward = "rge-forward"
 
 
 class LargeModel(Enum):
@@ -59,6 +63,9 @@ class MyConfig:
             "float32": torch.float32,
             "bfloat16": torch.bfloat16,
         }[self.model_dtype]
+    
+    def get_device(self):
+        return torch.device(self.device)
 
 
 # Step 2: YAML Loader

@@ -45,12 +45,13 @@ def zo_sgd_step(
 
 
 class ZOOptimizer:
-    def __init__(self, model, device, num_pert, estimate_func, perturbor):
+    def __init__(self, model, lr, device, num_pert, estimate_func, perturbor):
         self.model = model
         self.device = device
         self.num_pert = num_pert
         self.estimate_func = estimate_func
         self.perturbor = perturbor
+        self.lr = lr
 
     @classmethod
     def from_config(cls, config, model):
@@ -59,16 +60,17 @@ class ZOOptimizer:
             model=model,
             num_pert=config.num_pert,
             device=config.device,
+            lr=config.lr,
             # TODO: make this selection according to config
             estimate_func=forward_zo_estimate,
             perturbor=GaussianPerturb(config.device),
         )
 
-    def update_model_given_seed(
-        self, lr: float, seed: int, loss_fn: Callable[[nn.Module], torch.tensor]
-    ):
+    def update_model_given_seed(self, seed: int, loss_fn: Callable[[nn.Module], torch.tensor]):
         # Loss_fn is a function takes model as input and return loss value.
         # Consider a better approach?
         self.perturbor.set_seed(seed)
         grad_scalars = self.estimate_func(self.model, loss_fn, self.num_pert, self.perturbor)
-        return zo_sgd_step(self.model, lr=lr, perturbor=self.perturbor, grad_scalars=grad_scalars)
+        return zo_sgd_step(
+            self.model, lr=self.lr, perturbor=self.perturbor, grad_scalars=grad_scalars
+        )

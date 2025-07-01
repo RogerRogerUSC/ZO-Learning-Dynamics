@@ -11,32 +11,22 @@ from zo_llm.zo_optim import ZOOptimizer
 
 
 def setup_trainer(
-    config: config_parser.MyConfig, device: torch.device, train_loader
+    config: config_parser.MyConfig, device: torch.device, torch_dtype, train_loader
 ) -> LLM_trainer:
     model_inferences, metrics = prepare_settings.get_model_inferences_and_metrics(
         config.dataset, config
     )
-    trainer = LLM_trainer(device=device, dataloader=train_loader)
+    trainer = LLM_trainer(device=device, dataloader=train_loader, torch_dtype=torch_dtype)
     model = prepare_settings.get_model(
         dataset=config.dataset, model_setting=config, seed=config.seed
     ).to(device)
-    # TODO delete `optimizer` and `grad_estimator`
-    optimizer = prepare_settings.get_optimizer(
-        model=model, dataset=config.dataset, optimizer_setting=config
-    )
-    grad_estimator = prepare_settings.get_gradient_estimator(
-        model=model,
-        device=device,
-        config=config,
-    )
+
     zo_optimizer = ZOOptimizer.from_config(config, model=model)
     trainer.set_model_and_criterion(
         model,
         model_inferences.test_inference,
         metrics.test_loss,
         metrics.test_acc,
-        optimizer,
-        grad_estimator,
         zo_optimizer,
     )
     return trainer
@@ -45,11 +35,12 @@ def setup_trainer(
 if __name__ == "__main__":
     # TODO make args for config file.
     config = config_parser.parse_config("text_classification.yaml")
-    device = torch.device(config.device)
+    device = config.get_device()
+    torch_dtype=config.get_torch_dtype()
     train_loader, test_loader = data_utils.get_dataloaders(
         config, config.seed, config.get_hf_model_name()
     )
-    trainer = setup_trainer(config, device, train_loader)
+    trainer = setup_trainer(config, device, torch_dtype, train_loader)
 
     if config.log_to_tensorboard:
         assert trainer.model

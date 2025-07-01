@@ -4,7 +4,6 @@ from functools import partial
 from transformers import AutoModelForCausalLM
 from util import model_utils
 from util.model_utils import AllModel
-from zo_llm.random_grad_estimator import RandomGradientEstimator
 from util.language_utils import (
     LM_TEMPLATE_MAP,
     SUPPORTED_LLM,
@@ -45,28 +44,6 @@ def get_model(
         return model
     else:
         raise Exception(f"Dataset {dataset} is not supported")
-
-
-def get_optimizer(
-    model: AllModel, dataset: SupportedDataset, optimizer_setting: MyConfig
-) -> torch.optim.SGD:
-    trainable_model_parameters = model_utils.get_trainable_model_parameters(model)
-    if isinstance(dataset, LmClassificationTask):
-        return torch.optim.SGD(
-            trainable_model_parameters,
-            lr=optimizer_setting.lr,
-            momentum=0,
-            weight_decay=5e-4,
-        )
-    elif isinstance(dataset, LmGenerationTask):
-        return torch.optim.SGD(
-            trainable_model_parameters,
-            lr=optimizer_setting.lr,
-            momentum=0,
-            weight_decay=0,
-        )
-    else:
-        raise Exception(f"dataset {dataset.value} not supported")
 
 
 @dataclass
@@ -137,19 +114,3 @@ def get_model_inferences_and_metrics(
             test_loss=test_criterion,
             test_acc=test_accuracy_func,
         )
-
-
-def get_gradient_estimator(
-    model: AllModel, device: torch.device, config: MyConfig
-) -> RandomGradientEstimator:
-    if config.estimator_type == "vanilla":
-        return RandomGradientEstimator(
-            parameters=model_utils.get_trainable_model_parameters(model),
-            mu=config.mu,
-            num_pert=config.num_pert,
-            grad_estimate_method=config.grad_estimate_method,
-            device=device,
-            torch_dtype=config.get_torch_dtype(),
-        )
-    else:
-        raise ValueError(f"Invalid estimator type: {config.estimator_type}")
