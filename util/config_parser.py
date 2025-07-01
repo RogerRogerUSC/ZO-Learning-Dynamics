@@ -63,7 +63,7 @@ class MyConfig:
             "float32": torch.float32,
             "bfloat16": torch.bfloat16,
         }[self.model_dtype]
-    
+
     def get_device(self):
         return torch.device(self.device)
 

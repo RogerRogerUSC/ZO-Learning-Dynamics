@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # TODO make args for config file.
     config = config_parser.parse_config("text_classification.yaml")
     device = config.get_device()
-    torch_dtype=config.get_torch_dtype()
+    torch_dtype = config.get_torch_dtype()
     train_loader, test_loader = data_utils.get_dataloaders(
         config, config.seed, config.get_hf_model_name()
     )

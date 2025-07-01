@@ -15,7 +15,7 @@ class LLM_trainer:
         self.torch_dtype = torch_dtype
         self.dataloader = dataloader
         self.data_iterator = self._get_train_batch_iterator()
-        
+
         self.model = None
         self.model_inference: Callable[[torch.nn.Module, Any], torch.Tensor] | None = None
         self.criterion: CriterionType | None = None
@@ -45,10 +45,7 @@ class LLM_trainer:
 
         with torch.no_grad():
             batch_inputs, labels = next(self.data_iterator)
-            if (
-                self.device != torch.device("cpu")
-                or self.torch_dtype != torch.float32
-            ):
+            if self.device != torch.device("cpu") or self.torch_dtype != torch.float32:
                 batch_inputs = batch_inputs.to(self.device, self.torch_dtype)
                 if isinstance(labels, torch.Tensor):  # In generation mode, labels are not tensor.
                     labels = labels.to(self.device)
@@ -70,10 +67,7 @@ class LLM_trainer:
         eval_acc = Metric("Eval acc")
         with torch.no_grad():
             for _, (batch_inputs, batch_labels) in enumerate(test_loader):
-                if (
-                    self.device != torch.device("cpu")
-                    or self.torch_dtype != torch.float32
-                ):
+                if self.device != torch.device("cpu") or self.torch_dtype != torch.float32:
                     batch_inputs = batch_inputs.to(self.device, self.torch_dtype)
                     # In generation mode, labels are not tensor.
                     if isinstance(batch_labels, torch.Tensor):
