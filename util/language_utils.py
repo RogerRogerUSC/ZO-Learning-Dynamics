@@ -20,11 +20,15 @@ SUPPORTED_LLM = {
     "opt-13b": "facebook/opt-13b",
     "opt-30b": "facebook/opt-30b",
     "deepseek-qwen-1.5b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+    "gpt2": "gpt2",
 }
 
 
 def get_hf_tokenizer(hf_model_name):
-    return AutoTokenizer.from_pretrained(hf_model_name, padding_side="left", truncate_side="left")
+    tokenizer = AutoTokenizer.from_pretrained(hf_model_name, padding_side="left", truncate_side="left")
+    if hf_model_name == "gpt2":
+        tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
 
 
 class CustomLMDataset(torch.utils.data.DataLoader):

@@ -23,6 +23,7 @@ class LargeModel(Enum):
     opt_13b = "opt-13b"
     opt_30b = "opt-30b"
     deepseek_qwen_1p5b = "deepseek-qwen-1.5b"
+    gpt2 = "gpt2"
 
 
 # Step 1: Define your config dataclass
