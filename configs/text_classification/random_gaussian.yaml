@@ -1,11 +1,11 @@
 # General
 device: "cuda"
-large_model: "opt-125m"
+large_model: "deepseek-qwen-1.5b"
 model_dtype: "float32"
 
 # training parameters
 lr: 0.000005
-iterations: 1000
+iterations: 3000
 eval_iterations: 20
 
 # dataset
@@ -16,6 +16,7 @@ test_batch_size: 8
 # zo parameters
 estimator_type: 'vanilla'
 grad_estimate_method: 'rge-central'
+pert_distribution: 'random_gaussian'
 num_pert: 5
 mu: 0.001
 

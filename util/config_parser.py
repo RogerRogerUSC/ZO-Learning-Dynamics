@@ -49,6 +49,7 @@ class MyConfig:
     grad_estimate_method: RandomGradEstimateMethod = attrs.field(converter=RandomGradEstimateMethod)
     num_pert: int
     mu: float
+    pert_distribution: str
 
     # MISC
     seed: int

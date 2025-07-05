@@ -8,6 +8,7 @@ from util import config_parser
 from util import data_utils
 from zo_llm.llm_trainer import LLM_trainer
 from zo_llm.zo_optim import ZOOptimizer
+import argparse
 
 
 def setup_trainer(
@@ -33,13 +34,22 @@ def setup_trainer(
 
 
 if __name__ == "__main__":
-    # TODO make args for config file.
-    config = config_parser.parse_config("text_classification.yaml")
+    parser = argparse.ArgumentParser(description="Config File")
+    parser.add_argument(
+        "--config-path",
+        type=str,
+        default="text_classification/uniform.yaml",
+        help="Path to the YAML configuration file",
+    )
+    args = parser.parse_args()
+
+    config = config_parser.parse_config(args.config_path)
     device = config.get_device()
     torch_dtype = config.get_torch_dtype()
     train_loader, test_loader = data_utils.get_dataloaders(
         config, config.seed, config.get_hf_model_name()
     )
+    # TODO make the trainer deterministic by seed.
     trainer = setup_trainer(config, device, torch_dtype, train_loader)
 
     if config.log_to_tensorboard:

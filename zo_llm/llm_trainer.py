@@ -53,7 +53,9 @@ class LLM_trainer:
             def loss_fn(model):
                 return self.criterion(self.model_inference(model, batch_inputs), labels)
 
-            self.zo_optimizer.update_model_given_seed(seed=seed, loss_fn=loss_fn)
+            self.zo_optimizer.update_model_given_seed(
+                iteration=iteration, seed=seed, loss_fn=loss_fn
+            )
 
             pred = self.model_inference(self.model, batch_inputs)
             train_loss.update(self.criterion(pred, labels))
