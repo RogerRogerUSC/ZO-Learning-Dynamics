@@ -39,8 +39,6 @@ class GaussianPerturb(PerturbBase):
         seed = self.get_seed()
         rng = self.get_rng(seed, index)
         for param in params:
-            print(param)
-            exit()
             perturb = torch.randn(
                 *param.shape, device=self.device, dtype=param.dtype, generator=rng
             )
