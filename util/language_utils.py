@@ -25,7 +25,9 @@ SUPPORTED_LLM = {
 
 
 def get_hf_tokenizer(hf_model_name):
-    tokenizer = AutoTokenizer.from_pretrained(hf_model_name, padding_side="left", truncate_side="left")
+    tokenizer = AutoTokenizer.from_pretrained(
+        hf_model_name, padding_side="left", truncate_side="left"
+    )
     if hf_model_name == "gpt2":
         tokenizer.pad_token = tokenizer.eos_token
     return tokenizer
