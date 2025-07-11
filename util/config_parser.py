@@ -2,9 +2,10 @@ from pathlib import Path
 import yaml
 import attrs
 import torch
+from typing import Union
 from enum import Enum
 
-from util.language_utils import SUPPORTED_LLM, LmClassificationTask
+from util.language_utils import SUPPORTED_LLM, LmClassificationTask, LmGenerationTask
 
 file_path = Path(__file__)
 
@@ -24,6 +25,8 @@ class LargeModel(Enum):
     opt_30b = "opt-30b"
     deepseek_qwen_1p5b = "deepseek-qwen-1.5b"
     gpt2 = "gpt2"
+    llama_1b = "llama-1b"
+    phi_1_5 = "phi-1_5"
 
 
 # Step 1: Define your config dataclass
@@ -40,8 +43,11 @@ class MyConfig:
     eval_iterations: int
 
     # dataset
-    dataset: LmClassificationTask = attrs.field(converter=LmClassificationTask)
-    # dataset: LmGenerationTask = attrs.field(converter=LmGenerationTask)
+    dataset: Union[LmClassificationTask, LmGenerationTask] = attrs.field(
+        converter=lambda x: LmClassificationTask(x)
+        if isinstance(x, str) and x in LmClassificationTask.__members__
+        else LmGenerationTask(x)
+    )
     train_batch_size: int
     test_batch_size: int
 

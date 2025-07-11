@@ -1,17 +1,17 @@
 # General
 device: "cuda"
-large_model: "opt-125m"
+large_model: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
 model_dtype: "float32"
 
 # training parameters
-lr: 0.000005
-iterations: 1000
+lr: 0.00001
+iterations: 2000
 eval_iterations: 20
 
 # dataset
-dataset: "sst2"
-train_batch_size: 8
-test_batch_size: 8
+dataset: "wic"
+train_batch_size: 32
+test_batch_size: 32
 
 # zo parameters
 estimator_type: 'vanilla'

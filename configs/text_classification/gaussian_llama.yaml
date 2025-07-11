@@ -1,0 +1,24 @@
+# General
+device: "cuda"
+large_model: "llama-1b"
+model_dtype: "float32"
+
+# training parameters
+lr: 0.00001
+iterations: 2000
+eval_iterations: 10
+
+# dataset
+dataset: "wic"
+train_batch_size: 8
+test_batch_size: 8
+
+# zo parameters
+estimator_type: 'vanilla'
+grad_estimate_method: 'rge-central'
+pert_distribution: 'gaussian'
+num_pert: 5
+mu: 0.001
+
+# MISC
+seed: 1234
