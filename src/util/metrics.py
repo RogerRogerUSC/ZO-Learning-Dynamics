@@ -18,7 +18,7 @@ class Metric(object):
         self.n = torch.tensor(0.0)
 
     def update(self, val: float | torch.Tensor):
-        if isinstance(val, float):
+        if isinstance(val, (float, int)):
             self.sum += val
         else:
             self.sum += val.detach().cpu()

@@ -38,7 +38,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config-path",
         type=str,
-        default="text_classification/uniform.yaml",
+        default="text_classification/uniform_opt.yaml",
         help="Path to the YAML configuration file",
     )
     args = parser.parse_args()
