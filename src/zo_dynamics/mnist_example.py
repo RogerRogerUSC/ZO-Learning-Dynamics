@@ -1,3 +1,5 @@
+# Running command
+#   python src/zo_dynamics/mnist_example.py
 import numpy as np
 from tqdm import tqdm
 import copy
@@ -72,12 +74,13 @@ if __name__ == "__main__":
             torchvision.transforms.Normalize((0.1307,), (0.3081,)),
         ]
     )
+    np.random.seed(12345)
     rnd_perm = np.random.permutation(np.arange(0, 60000))
     full_trainset = torchvision.datasets.MNIST(
         "./data", train=True, download=True, transform=train_transform
     )
-    train_subset = torch.utils.data.Subset(full_trainset, list(rnd_perm[:2000]))
-    test_subset = torch.utils.data.Subset(full_trainset, list(rnd_perm[2000:4000]))
+    train_subset = torch.utils.data.Subset(full_trainset, list(rnd_perm[:20000]))
+    test_subset = torch.utils.data.Subset(full_trainset, list(rnd_perm[20000:40000]))
 
     seed_loader = torch.utils.data.DataLoader(train_subset, batch_size=2000, shuffle=False)
     train_loader = torch.utils.data.DataLoader(train_subset, batch_size=64, shuffle=True)
