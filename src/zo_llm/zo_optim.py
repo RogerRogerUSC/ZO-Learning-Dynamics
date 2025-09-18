@@ -1,12 +1,14 @@
 from typing import Callable
+
 import torch
 import torch.nn as nn
+
 from zo_llm.perturb import (
-    PerturbBase,
-    GaussianPerturb,
     BernoulliPerturb,
-    UnifromPerturb,
+    GaussianPerturb,
+    PerturbBase,
     RandomizedGaussianPerturb,
+    UnifromPerturb,
 )
 
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import random
 from typing import Any, Callable, Iterable, Iterator, TypeAlias
+
 import torch
 
+from zo_llm.util.metrics import Metric
 from zo_llm.zo_optim import ZOOptimizer
-from util.metrics import Metric
 
 CriterionType: TypeAlias = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 

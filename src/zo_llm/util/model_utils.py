@@ -1,9 +1,11 @@
 from os import path
 from typing import Iterator, TypeAlias
+
 import torch
 from peft import PeftModel
 from transformers.modeling_utils import PreTrainedModel
-from util.language_utils import LLMBatchInput
+
+from zo_llm.util.language_utils import LLMBatchInput
 
 LanguageModel: TypeAlias = PreTrainedModel | PeftModel
 AllModel: TypeAlias = torch.nn.Module | LanguageModel

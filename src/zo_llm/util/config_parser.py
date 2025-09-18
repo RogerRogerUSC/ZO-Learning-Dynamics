@@ -1,11 +1,12 @@
+from enum import Enum
 from pathlib import Path
-import yaml
+from typing import Union
+
 import attrs
 import torch
-from typing import Union
-from enum import Enum
+import yaml
 
-from util.language_utils import SUPPORTED_LLM, LmClassificationTask, LmGenerationTask
+from zo_llm.util.language_utils import SUPPORTED_LLM, LmClassificationTask, LmGenerationTask
 
 file_path = Path(__file__)
 

@@ -8,10 +8,12 @@ commands to setup the enviroments.
 ```py
 uv sync
 source .venv/bin/activate
+uv pip install -e .
 ```
 
 We use `ruff` to format and check the lint.
 ```py
+isort .
 ruff format .
 ruff check --fix
 ```

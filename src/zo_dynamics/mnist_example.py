@@ -1,13 +1,13 @@
 # Running command
 #   python src/zo_dynamics/mnist_example.py
-import numpy as np
-from tqdm import tqdm
 import copy
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision
-
+from tqdm import tqdm
 from util.metrics import Metric
 
 

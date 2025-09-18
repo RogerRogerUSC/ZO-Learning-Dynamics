@@ -1,19 +1,15 @@
-import torch
-from typing import Callable, TypeAlias
-from functools import partial
-from transformers import AutoModelForCausalLM
-from util import model_utils
-from util.model_utils import AllModel
-from util.language_utils import (
-    LM_TEMPLATE_MAP,
-    SUPPORTED_LLM,
-    get_lm_loss,
-    get_hf_tokenizer,
-)
-from util.config_parser import MyConfig
-from util.data_utils import LmClassificationTask, LmGenerationTask
 from dataclasses import dataclass
+from functools import partial
+from typing import Callable, TypeAlias
 
+import torch
+from transformers import AutoModelForCausalLM
+
+from zo_llm.util import model_utils
+from zo_llm.util.config_parser import MyConfig
+from zo_llm.util.data_utils import LmClassificationTask, LmGenerationTask
+from zo_llm.util.language_utils import LM_TEMPLATE_MAP, SUPPORTED_LLM, get_hf_tokenizer, get_lm_loss
+from zo_llm.util.model_utils import AllModel
 
 SupportedDataset: TypeAlias = LmClassificationTask | LmGenerationTask
 

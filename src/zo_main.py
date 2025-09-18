@@ -1,14 +1,13 @@
+import argparse
 from os import path
+
 import torch
 from tensorboardX import SummaryWriter
 from tqdm import tqdm
-from util import model_utils
-from util import prepare_settings
-from util import config_parser
-from util import data_utils
+
 from zo_llm.llm_trainer import LLM_trainer
+from zo_llm.util import config_parser, data_utils, model_utils, prepare_settings
 from zo_llm.zo_optim import ZOOptimizer
-import argparse
 
 
 def setup_trainer(

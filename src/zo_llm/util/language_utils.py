@@ -1,14 +1,14 @@
+import re
+import string
+from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
 from typing import Literal, Sequence
-from collections import Counter
-import re
-import string
-import torch
-import numpy as np
-from transformers import AutoTokenizer
 
+import numpy as np
+import torch
+from transformers import AutoTokenizer
 
 # LLM
 SUPPORTED_LLM = {
@@ -215,7 +215,7 @@ class DROPTemplate(Template):
         prompt = "Answer:"
         question = sample["question"].strip()
         passage = sample["passage"]
-        return f"Passage: {passage}\nQuestion: {question}\{prompt}:"
+        return f"Passage: {passage}\nQuestion: {question}\n{prompt}:"
 
     def verbalize(self, sample):
         prompt = "Answer:"
