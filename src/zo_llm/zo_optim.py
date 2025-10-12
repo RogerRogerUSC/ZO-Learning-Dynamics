@@ -12,6 +12,8 @@ from zo_llm.perturb import (
 )
 
 
+# The argument loss_fn is similar to kernel machine idea.
+# It takes the model as input and return a scalar value for the loss.
 def forward_zo_estimate(
     model, loss_fn, num_pert: int, perturbator: PerturbBase
 ) -> list[torch.Tensor]:

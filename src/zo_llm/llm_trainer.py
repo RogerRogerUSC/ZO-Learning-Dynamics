@@ -44,7 +44,7 @@ class LLM_trainer:
         seed = random.randint(0, 1000000)
         train_loss = Metric("Train loss")
         train_acc = Metric("Train acc")
-
+        self.model.eval()  # It is safer to use evaluation mode for zo method.
         with torch.no_grad():
             batch_inputs, labels = next(self.data_iterator)
             if self.device != torch.device("cpu") or self.torch_dtype != torch.float32:

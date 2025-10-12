@@ -3,13 +3,12 @@ from functools import partial
 from typing import Callable, TypeAlias
 
 import torch
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoConfig
 
 from zo_llm.util import model_utils
 from zo_llm.util.config_parser import MyConfig
 from zo_llm.util.data_utils import LmClassificationTask, LmGenerationTask
 from zo_llm.util.language_utils import LM_TEMPLATE_MAP, SUPPORTED_LLM, get_hf_tokenizer, get_lm_loss
-from zo_llm.util.model_utils import AllModel
 
 SupportedDataset: TypeAlias = LmClassificationTask | LmGenerationTask
 
@@ -18,18 +17,26 @@ def get_model(
     dataset: SupportedDataset,
     model_setting: MyConfig,
     seed: int | None = None,
-) -> AllModel:
+) -> model_utils.AllModel:
     torch_dtype = model_setting.get_torch_dtype()
-    model: AllModel
+    model: model_utils.AllModel
     if seed:
         torch.manual_seed(seed)
 
     if isinstance(dataset, (LmClassificationTask, LmGenerationTask)):
         assert model_setting.large_model.value in SUPPORTED_LLM
         hf_model_name = model_setting.get_hf_model_name()
+        # We want to disable dropout for all models.
+        config = AutoConfig.from_pretrained(hf_model_name)
+        config.attention_dropout = 0.0
+        config.activation_dropout = 0.0
+        config.dropout = 0.0
+
         model = AutoModelForCausalLM.from_pretrained(
-            hf_model_name, torch_dtype=torch_dtype, trust_remote_code=True
+            hf_model_name, torch_dtype=torch_dtype, trust_remote_code=True,
+            config=config,
         )
+        model_utils.disable_dropout_layer(model) 
         model.model_name = model_setting.large_model.value
         # if model_setting and model_setting.lora:
         #     # this step initialize lora parameters, which should be under control of seed

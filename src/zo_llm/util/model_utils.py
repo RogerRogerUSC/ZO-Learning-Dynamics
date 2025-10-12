@@ -35,6 +35,13 @@ def eval_network_and_get_loss(params_dict, network, x, y, loss_func):
     return loss
 
 
+def disable_dropout_layer(model):
+    for module in model.modules():
+        if isinstance(module, torch.nn.Dropout):
+            module.p = 0.0
+            print(f"Set dropout probability to {module.p} for {module}")
+
+
 def save_model_and_optimizer(optimizer, model, model_path, model_prefix):
     save_path = path.join(
         path.dirname(path.dirname(__file__)),
