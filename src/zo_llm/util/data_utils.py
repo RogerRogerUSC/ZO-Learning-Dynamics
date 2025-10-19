@@ -36,8 +36,12 @@ def get_dataloaders(
         template = LM_TEMPLATE_MAP[data_setting.dataset.value]()
         encoded_train_texts = list(map(template.verbalize, raw_train_dataset))
         encoded_test_texts = list(map(template.verbalize, raw_test_dataset))
-        train_dataset = CustomLMDataset(encoded_train_texts, tokenizer, max_length=max_length)
-        test_dataset = CustomLMDataset(encoded_test_texts, tokenizer, max_length=max_length)
+        train_dataset = CustomLMDataset(
+            encoded_train_texts, raw_train_dataset["label"], tokenizer, max_length=max_length
+        )
+        test_dataset = CustomLMDataset(
+            encoded_test_texts, raw_test_dataset["label"], tokenizer, max_length=max_length
+        )
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=data_setting.train_batch_size,

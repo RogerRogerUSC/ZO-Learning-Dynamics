@@ -3,7 +3,7 @@ from functools import partial
 from typing import Callable, TypeAlias
 
 import torch
-from transformers import AutoModelForCausalLM, AutoConfig
+from transformers import AutoConfig, AutoModelForCausalLM
 
 from zo_llm.util import model_utils
 from zo_llm.util.config_parser import MyConfig
@@ -33,10 +33,12 @@ def get_model(
         config.dropout = 0.0
 
         model = AutoModelForCausalLM.from_pretrained(
-            hf_model_name, torch_dtype=torch_dtype, trust_remote_code=True,
+            hf_model_name,
+            torch_dtype=torch_dtype,
+            trust_remote_code=True,
             config=config,
         )
-        model_utils.disable_dropout_layer(model) 
+        model_utils.disable_dropout_layer(model)
         model.model_name = model_setting.large_model.value
         # if model_setting and model_setting.lora:
         #     # this step initialize lora parameters, which should be under control of seed
