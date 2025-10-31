@@ -34,8 +34,9 @@ def get_hf_tokenizer(hf_model_name):
 
 
 class CustomLMDataset(torch.utils.data.DataLoader):
-    def __init__(self, texts, tokenizer, max_length):
+    def __init__(self, texts, labels, tokenizer, max_length):
         self.texts = texts
+        self.labels = labels
         self.tokenizer = tokenizer
         self.max_length = max_length
 
@@ -48,7 +49,7 @@ class CustomLMDataset(torch.utils.data.DataLoader):
         # left_truncation
         if len(input_ids) > self.max_length:
             input_ids = input_ids[-self.max_length :]
-        return torch.tensor(input_ids, dtype=torch.long)
+        return torch.tensor(input_ids, dtype=torch.long), self.labels[idx]
 
 
 class CustomLMGenerationDataset(torch.utils.data.DataLoader):
@@ -132,6 +133,9 @@ class BoolQTemplate(ClassificationTemplate):
     def verbalize_for_pred(self, sample):
         passage = sample["passage"]
         question = sample["question"]
+        if not question.endswith("?"):
+            question = question + "?"
+        question = question[0].upper() + question[1:]
         return f"{passage}\nQuestion: {question}\nIs that correct? Yes or No?\n"
 
     def verbalize(self, sample):
@@ -178,7 +182,7 @@ class WICTemplate(ClassificationTemplate):
         sent1 = sample["sentence1"]
         sent2 = sample["sentence2"]
         word = sample["word"]
-        return f'Does the word "{word}" have the same meaning in these two sentences? Yes, No?\n{sent1}\n{sent2}\n'
+        return f'Does the word "{word}" have the same meaning in these two sentences?\n{sent1}\n{sent2}\nYes, No?\n'
 
 
 class WSCTemplate(ClassificationTemplate):
@@ -215,7 +219,7 @@ class DROPTemplate(Template):
         prompt = "Answer:"
         question = sample["question"].strip()
         passage = sample["passage"]
-        return f"Passage: {passage}\nQuestion: {question}\n{prompt}:"
+        return f"Passage: {passage}\nQuestion: {question}\n{prompt}"
 
     def verbalize(self, sample):
         prompt = "Answer:"
@@ -223,7 +227,7 @@ class DROPTemplate(Template):
         passage = sample["passage"]
         # There are multiple answers. for the prompt we only take the first one
         answer = sample["answers_spans"]["spans"][0]
-        return f"Passage: {passage}\nQuestion: {question}\n{prompt}{answer}"
+        return f"Passage: {passage}\nQuestion: {question}\n{prompt}{answer}\n"
 
 
 class XSUMTemplate(Template):
@@ -298,9 +302,10 @@ class LLMBatchInput:
 
 def get_collate_fn(tokenizer, max_length):
     def collate_fn(batch):
+        inputs, labels = zip(*batch)
         # Pad sequences to the max length in the batch
         padded_batch = tokenizer.pad(
-            {"input_ids": batch},
+            {"input_ids": inputs},
             padding=True,
             max_length=max_length,
             return_tensors="pt",
@@ -308,8 +313,9 @@ def get_collate_fn(tokenizer, max_length):
         input_ids = padded_batch["input_ids"]
         attention_mask = padded_batch["attention_mask"]
         return (
+            # We remove the last token in input_ids since it is prediction.
             LLMBatchInput(input_ids[:, :(-1)], attention_mask[:, :(-1)]),
-            input_ids[:, 1:],
+            labels,
         )  # Prepare input and target sequences
 
     return collate_fn
@@ -371,24 +377,23 @@ def full_sentence_cross_entropy_loss(batch_pred, sentence_label_tokens):
     return loss
 
 
-def last_token_cross_entropy_loss(
-    batch_pred, sentence_label_tokens, verbalizer_id_map, verbalizer_id_list
-):
+def last_token_cross_entropy_loss(batch_pred, labels, verbalizer_id_map, verbalizer_id_list):
     logits = batch_pred.logits
+    # verbalizer_id_map is something like {0: 746, 1: 989}
+    # verbalizer_id_list is something like [746, 989], 746 may represent "good" and 989 for "bad"
     last_token_batch_pred = logits[:, -1, verbalizer_id_list].view(-1, len(verbalizer_id_list))
-    last_token_label = (sentence_label_tokens[:, -1] == verbalizer_id_map[1]).to(int)
-
-    loss = torch.nn.functional.cross_entropy(last_token_batch_pred, last_token_label)
+    # labels just a tuple of integers liks [0, 0, 1, 0, 1, 0] with the length of batch size.
+    label_tensor = torch.tensor(labels).to(last_token_batch_pred.device)
+    loss = torch.nn.functional.cross_entropy(last_token_batch_pred, label_tensor)
     return loss
 
 
-def last_token_accuracy(batch_pred, sentence_label_tokens, verbalizer_id_map, verbalizer_id_list):
+def last_token_accuracy(batch_pred, labels, verbalizer_id_map, verbalizer_id_list):
     logits = batch_pred.logits
     last_token_batch_pred = logits[:, -1, verbalizer_id_list].view(-1, len(verbalizer_id_list))
-    last_token_label = (sentence_label_tokens[:, -1] == verbalizer_id_map[1]).to(int)
-
     pred = last_token_batch_pred.max(1, keepdim=True)[1]
-    return pred.eq(last_token_label.view_as(pred)).cpu().float().mean()
+    label_tensor = torch.tensor(labels).to(last_token_batch_pred.device)
+    return pred.eq(label_tensor.view_as(pred)).cpu().float().mean()
 
 
 def normalize_answer(s: str) -> str:
