@@ -5,7 +5,7 @@ model_dtype: "float16"
 
 # training parameters
 lr: 0.000005
-iterations: 3000
+iterations: 200
 eval_iterations: 20
 
 # dataset
@@ -16,8 +16,8 @@ test_batch_size: 32
 # zo parameters
 estimator_type: "vanilla"
 grad_estimate_method: "rge-central"
-pert_distribution: "gaussian"
-num_pert: 5
+pert_distribution: "bernoulli"
+num_pert: 10
 mu: 0.001
 
 # MISC

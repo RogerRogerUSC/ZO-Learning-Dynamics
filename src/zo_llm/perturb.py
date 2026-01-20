@@ -44,6 +44,22 @@ class GaussianPerturb(PerturbBase):
             )
             param.add_(perturb, alpha=alpha)
 
+class GaussianBallPerturb(PerturbBase):
+    def __init__(self, device, mu=1e-3):
+        self._mu = mu
+        self._device = device
+
+    def perturb(self, params, index: int, alpha: float) -> None:
+        seed = self.get_seed()
+        rng = self.get_rng(seed, index)
+        for param in params:
+            perturb = torch.randn(
+                *param.shape, device=self.device, dtype=param.dtype, generator=rng
+            )
+            scale = torch.norm(perturb)
+            perturb /= scale
+            param.add_(perturb, alpha=alpha)
+
 
 class BernoulliPerturb(PerturbBase):
     def __init__(self, device, mu=1e-3):

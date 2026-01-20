@@ -1,11 +1,11 @@
 # General
 device: "cuda"
-large_model: "opt-125m"
+large_model: "opt-350m"
 model_dtype: "float16"
 
 # training parameters
 lr: 0.000005
-iterations: 3000
+iterations: 200
 eval_iterations: 20
 
 # dataset

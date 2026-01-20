@@ -42,16 +42,20 @@ def get_dataloaders(
         test_dataset = CustomLMDataset(
             encoded_test_texts, raw_test_dataset["label"], tokenizer, max_length=max_length
         )
+        generator = torch.Generator().manual_seed(seed)
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=data_setting.train_batch_size,
             shuffle=True,
+            generator=generator,
             collate_fn=get_collate_fn(tokenizer, max_length),
         )
+        test_generator = torch.Generator().manual_seed(seed)
         test_loader = torch.utils.data.DataLoader(
             test_dataset,
             batch_size=data_setting.test_batch_size,
             shuffle=True,
+            generator=test_generator,
             collate_fn=get_collate_fn(tokenizer, max_length),
         )
     elif isinstance(data_setting.dataset, LmGenerationTask):
@@ -75,16 +79,20 @@ def get_dataloaders(
         test_dataset = CustomLMGenerationDataset(
             encoded_test_texts, test_golds, tokenizer, max_length=max_length
         )
+        generator = torch.Generator().manual_seed(seed)
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=data_setting.train_batch_size,
             shuffle=True,
+            generator=generator,
             collate_fn=get_collate_fn(tokenizer, max_length),  # Notice the collate_fn
         )
+        test_generator = torch.Generator().manual_seed(seed)
         test_loader = torch.utils.data.DataLoader(
             test_dataset,
             batch_size=data_setting.test_batch_size,
             shuffle=True,
+            generator=test_generator,
             collate_fn=get_collate_fn_for_gen_model(tokenizer, max_length),
         )
 

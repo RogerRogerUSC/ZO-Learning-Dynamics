@@ -5,6 +5,7 @@ import torch.nn as nn
 
 from zo_llm.perturb import (
     BernoulliPerturb,
+    GaussianBallPerturb,
     GaussianPerturb,
     PerturbBase,
     RandomizedGaussianPerturb,
@@ -66,6 +67,8 @@ class ZOOptimizer:
         # TODO make criterion and model_inference_fn into proper position.
         if config.pert_distribution == "gaussian":
             perturbator = GaussianPerturb(config.device, config.mu)
+        elif config.pert_distribution == "gaussian_ball":
+            perturbator = GaussianBallPerturb(config.device, config.mu)
         elif config.pert_distribution == "bernoulli":
             perturbator = BernoulliPerturb(config.device, config.mu)
         elif config.pert_distribution == "uniform":
