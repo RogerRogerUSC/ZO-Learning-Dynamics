@@ -36,11 +36,16 @@ def get_dataloaders(
         template = LM_TEMPLATE_MAP[data_setting.dataset.value]()
         encoded_train_texts = list(map(template.verbalize, raw_train_dataset))
         encoded_test_texts = list(map(template.verbalize, raw_test_dataset))
+        # Convert raw datasets to lists for storage
+        raw_train_samples = [raw_train_dataset[i] for i in range(len(raw_train_dataset))]
+        raw_test_samples = [raw_test_dataset[i] for i in range(len(raw_test_dataset))]
         train_dataset = CustomLMDataset(
-            encoded_train_texts, raw_train_dataset["label"], tokenizer, max_length=max_length
+            encoded_train_texts, raw_train_dataset["label"], tokenizer, max_length=max_length,
+            raw_samples=raw_train_samples
         )
         test_dataset = CustomLMDataset(
-            encoded_test_texts, raw_test_dataset["label"], tokenizer, max_length=max_length
+            encoded_test_texts, raw_test_dataset["label"], tokenizer, max_length=max_length,
+            raw_samples=raw_test_samples
         )
         generator = torch.Generator().manual_seed(seed)
         train_loader = torch.utils.data.DataLoader(
@@ -75,9 +80,15 @@ def get_dataloaders(
             test_golds = list(map(lambda d: d["answers_spans"]["spans"][0], raw_test_dataset))
         elif data_setting.dataset == LmGenerationTask.xsum:
             test_golds = list(map(lambda d: d["summary"], raw_test_dataset))
-        train_dataset = CustomLMDataset(encoded_train_texts, tokenizer, max_length=max_length)
+        # Convert raw datasets to lists for storage
+        raw_train_samples = [raw_train_dataset[i] for i in range(len(raw_train_dataset))]
+        raw_test_samples = [raw_test_dataset[i] for i in range(len(raw_test_dataset))]
+        train_dataset = CustomLMDataset(
+            encoded_train_texts, labels=None, tokenizer=tokenizer, max_length=max_length, raw_samples=raw_train_samples
+        )
         test_dataset = CustomLMGenerationDataset(
-            encoded_test_texts, test_golds, tokenizer, max_length=max_length
+            encoded_test_texts, test_golds, tokenizer, max_length=max_length,
+            raw_samples=raw_test_samples
         )
         generator = torch.Generator().manual_seed(seed)
         train_loader = torch.utils.data.DataLoader(

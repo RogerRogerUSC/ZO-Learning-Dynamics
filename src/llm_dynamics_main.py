@@ -16,9 +16,132 @@ from tqdm import tqdm
 
 from zo_llm.llm_trainer import LLM_trainer
 from zo_llm.util import config_parser, data_utils, model_utils, prepare_settings
-from zo_llm.util.language_utils import get_hf_tokenizer, LM_TEMPLATE_MAP
+from zo_llm.util.language_utils import get_hf_tokenizer, LM_TEMPLATE_MAP, LLMBatchInput
 from zo_llm.util.metrics import Metric
 from zo_llm.zo_optim import ZOOptimizer
+
+
+def generate_balanced_test_samples(
+    test_dataset: torch.utils.data.Dataset,
+    num_test_samples: int,
+    seed: int | None = None,
+) -> tuple[list[tuple[Any, Any]], list[dict[str, Any] | None], list[str | None]]:
+    """
+    Generate balanced test samples from a test dataset.
+    
+    This function ensures that each class is represented equally (or as equally as possible)
+    in the selected test samples. For example, if num_test_samples=4 and there are 2 classes,
+    it will select 2 samples from each class.
+    
+    Args:
+        test_dataset: The test dataset (should have labels attribute for classification tasks)
+        num_test_samples: Total number of test samples to generate
+        seed: Random seed for reproducibility (optional)
+    
+    Returns:
+        A tuple of (test_samples, test_raw_sentences, test_encoded_texts) where:
+        - test_samples: List of tuples (batch_input, label) ready for model inference
+        - test_raw_sentences: List of raw sample dictionaries (or None if not available)
+        - test_encoded_texts: List of encoded/verbalized text strings (or None if not available)
+    """
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+    
+    # Check if dataset has labels (classification task)
+    has_labels = hasattr(test_dataset, 'labels') and test_dataset.labels is not None
+    
+    if has_labels:
+        # Get all unique labels
+        labels = test_dataset.labels
+        if isinstance(labels, torch.Tensor):
+            labels = labels.tolist()
+        unique_labels = sorted(set(labels))
+        num_classes = len(unique_labels)
+        
+        # Group indices by label
+        label_to_indices = {label: [] for label in unique_labels}
+        for idx in range(len(test_dataset)):
+            label = labels[idx]
+            if isinstance(label, torch.Tensor):
+                label = label.item()
+            label_to_indices[label].append(idx)
+        
+        # Calculate samples per class (balanced)
+        samples_per_class = num_test_samples // num_classes
+        remainder = num_test_samples % num_classes
+        
+        # Select indices ensuring balance
+        selected_indices = []
+        for i, label in enumerate(unique_labels):
+            indices_for_label = label_to_indices[label]
+            # Shuffle to get random samples
+            shuffled_indices = indices_for_label.copy()
+            random.shuffle(shuffled_indices)
+            
+            # Take samples_per_class + 1 for first 'remainder' classes
+            num_to_take = samples_per_class + (1 if i < remainder else 0)
+            selected_indices.extend(shuffled_indices[:num_to_take])
+        
+        # Shuffle the final selection to mix classes
+        random.shuffle(selected_indices)
+    else:
+        # For generation tasks or datasets without labels, just take first N samples
+        selected_indices = list(range(min(num_test_samples, len(test_dataset))))
+        random.shuffle(selected_indices)
+    
+    # Collect samples
+    test_samples = []
+    test_raw_sentences = []
+    test_encoded_texts = []
+    
+    for idx in selected_indices:
+        # Get the sample from dataset
+        sample_data = test_dataset[idx]
+        
+        # Handle different return formats
+        if isinstance(sample_data, tuple):
+            sample_input_ids, sample_label = sample_data
+        else:
+            sample_input_ids = sample_data
+            sample_label = None
+        
+        # Create single-sample batch input
+        if isinstance(sample_input_ids, torch.Tensor):
+            single_input = LLMBatchInput(
+                input_ids=sample_input_ids.unsqueeze(0),
+                attention_mask=torch.ones_like(sample_input_ids.unsqueeze(0))
+            )
+        else:
+            # Handle case where input_ids might already be a batch
+            single_input = sample_input_ids
+        
+        # Handle label format
+        if sample_label is not None:
+            if isinstance(sample_label, torch.Tensor):
+                single_label = sample_label.unsqueeze(0) if sample_label.dim() == 0 else sample_label
+            else:
+                single_label = sample_label
+        else:
+            single_label = None
+        
+        test_samples.append((single_input, single_label))
+        
+        # Get raw sentence from dataset
+        if hasattr(test_dataset, 'get_raw_sample'):
+            raw_sample = test_dataset.get_raw_sample(idx)
+            test_raw_sentences.append(raw_sample)
+        else:
+            test_raw_sentences.append(None)
+        
+        # Get encoded/verbalized text from dataset
+        if hasattr(test_dataset, 'get_encoded_text'):
+            encoded_text = test_dataset.get_encoded_text(idx)
+            test_encoded_texts.append(encoded_text)
+        else:
+            test_encoded_texts.append(None)
+    
+    return test_samples, test_raw_sentences, test_encoded_texts
 
 
 def get_logits_for_test_samples(
@@ -181,6 +304,15 @@ def save_results(results: dict, output_dir: Path, config_path: str):
             "zo_logits_history": tensor_list_to_list(results["zo_logits_history"][sample_idx]),
             "zo_probs_history": tensor_list_to_list(results["zo_probs_history"][sample_idx]),
         }
+        
+        # Add raw sentence if available
+        if "test_raw_sentences" in results and sample_idx < len(results["test_raw_sentences"]):
+            sample_data["raw_sentence"] = results["test_raw_sentences"][sample_idx]
+        
+        # Add encoded text if available
+        if "test_encoded_texts" in results and sample_idx < len(results["test_encoded_texts"]):
+            sample_data["encoded_text"] = results["test_encoded_texts"][sample_idx]
+        
         combined_results["samples"].append(sample_data)
     
     # Generate filename with datetime (dd_mm_yyyy_hh_mm format)
@@ -233,7 +365,7 @@ def run_experiment(
     # Create results directory structure matching config path
     # __file__ is at src/llm_dynamics_main.py, so parent.parent is the repo root
     repo_root = Path(__file__).parent.parent
-    results_base_dir = repo_root / "results" / config_dir
+    results_base_dir = repo_root / "results" / config_dir / "01_21_2026"
     
     all_results = {}
     
@@ -280,39 +412,19 @@ def run_single_experiment(
         config, config.seed, config.get_hf_model_name()
     )
     
-    # Get 5 test samples (individual samples, not batches)
-    # We'll collect individual samples from batches
-    test_samples = []
-    test_iter = iter(test_loader)
-    collected = 0
-    while collected < num_test_samples:
-        try:
-            batch_inputs, batch_labels = next(test_iter)
-            # Extract individual samples from batch
-            batch_size = batch_inputs.input_ids.shape[0] if hasattr(batch_inputs, 'input_ids') else len(batch_labels)
-            for i in range(batch_size):
-                if collected >= num_test_samples:
-                    break
-                # Create single-sample batch
-                if hasattr(batch_inputs, 'input_ids'):
-                    single_input = type(batch_inputs)(
-                        input_ids=batch_inputs.input_ids[i:i+1],
-                        attention_mask=batch_inputs.attention_mask[i:i+1]
-                    )
-                else:
-                    single_input = batch_inputs[i:i+1]
-                
-                if isinstance(batch_labels, torch.Tensor):
-                    single_label = batch_labels[i:i+1]
-                elif isinstance(batch_labels, (list, tuple)):
-                    single_label = batch_labels[i]
-                else:
-                    single_label = batch_labels
-                
-                test_samples.append((single_input, single_label))
-                collected += 1
-        except StopIteration:
-            test_iter = iter(test_loader)
+    # Get test dataset to access raw samples
+    test_dataset = test_loader.dataset
+    
+    # Get tokenizer for encoding
+    hf_model_name = config.get_hf_model_name()
+    tokenizer = get_hf_tokenizer(hf_model_name)
+    
+    # Generate balanced test samples
+    test_samples, test_raw_sentences, test_encoded_texts = generate_balanced_test_samples(
+        test_dataset=test_dataset,
+        num_test_samples=num_test_samples,
+        seed=config.seed,
+    )
     
     # Get verbalizer tokens for logits extraction
     hf_model_name = config.get_hf_model_name()
@@ -485,6 +597,32 @@ def run_single_experiment(
         print(f"\nTest Sample {i + 1}:")
         print("-" * 80)
         
+        # Print raw sentence if available
+        if i < len(test_raw_sentences) and test_raw_sentences[i] is not None:
+            raw_sample = test_raw_sentences[i]
+            # Extract raw sentence text based on common fields
+            if "sentence" in raw_sample:
+                print(f"Raw sentence: {raw_sample['sentence']}")
+            elif "text" in raw_sample:
+                print(f"Raw text: {raw_sample['text']}")
+            elif "question1" in raw_sample and "question2" in raw_sample:
+                print(f"Raw Q1: {raw_sample['question1']}")
+                print(f"Raw Q2: {raw_sample['question2']}")
+            elif "passage" in raw_sample and "question" in raw_sample:
+                print(f"Raw passage: {raw_sample['passage']}")
+                print(f"Raw question: {raw_sample['question']}")
+            elif "premise" in raw_sample and "hypothesis" in raw_sample:
+                print(f"Raw premise: {raw_sample['premise']}")
+                print(f"Raw hypothesis: {raw_sample['hypothesis']}")
+            else:
+                print(f"Raw sample: {raw_sample}")
+            if "label" in raw_sample:
+                print(f"Label: {raw_sample['label']}")
+        
+        # Print encoded/verbalized text if available
+        if i < len(test_encoded_texts) and test_encoded_texts[i] is not None:
+            print(f"Encoded text: {test_encoded_texts[i]}")
+        
         # Initial and final logits
         sgd_initial = sgd_initial_logits[i]
         zo_initial = zo_initial_logits[i]
@@ -517,6 +655,8 @@ def run_single_experiment(
         "zo_logits_history": zo_logits_history,
         "zo_probs_history": zo_probs_history,
         "test_samples": test_samples,
+        "test_raw_sentences": test_raw_sentences,
+        "test_encoded_texts": test_encoded_texts,
         "verbalizer_id_list": verbalizer_id_list,
     }
 

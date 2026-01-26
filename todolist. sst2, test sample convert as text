@@ -1,6 +1,0 @@
-1. sst2, test sample convert as text
-2. change perturbation.
-	2.a # of perturbation
-	2.b distribution, BernoulliPerturb, GaussianBallPerturb, GaussianPerturb
-3. try larger models? use OPT-1.3b
-4. per step logits history, save all history

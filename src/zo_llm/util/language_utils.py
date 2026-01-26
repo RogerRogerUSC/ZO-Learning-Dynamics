@@ -34,11 +34,12 @@ def get_hf_tokenizer(hf_model_name):
 
 
 class CustomLMDataset(torch.utils.data.DataLoader):
-    def __init__(self, texts, labels, tokenizer, max_length):
+    def __init__(self, texts, labels=None, tokenizer=None, max_length=None, raw_samples=None):
         self.texts = texts
         self.labels = labels
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.raw_samples = raw_samples  # Store raw samples for reference
 
     def __len__(self):
         return len(self.texts)
@@ -49,16 +50,32 @@ class CustomLMDataset(torch.utils.data.DataLoader):
         # left_truncation
         if len(input_ids) > self.max_length:
             input_ids = input_ids[-self.max_length :]
-        return torch.tensor(input_ids, dtype=torch.long), self.labels[idx]
+        if self.labels is not None:
+            return torch.tensor(input_ids, dtype=torch.long), self.labels[idx]
+        else:
+            return torch.tensor(input_ids, dtype=torch.long)
+    
+    def get_raw_sample(self, idx):
+        """Get the raw sample at index idx."""
+        if self.raw_samples is not None:
+            return self.raw_samples[idx]
+        return None
+    
+    def get_encoded_text(self, idx):
+        """Get the encoded/verbalized text at index idx."""
+        if self.texts is not None and idx < len(self.texts):
+            return self.texts[idx]
+        return None
 
 
 class CustomLMGenerationDataset(torch.utils.data.DataLoader):
-    def __init__(self, texts, golds, tokenizer, max_length):
+    def __init__(self, texts, golds, tokenizer, max_length, raw_samples=None):
         assert len(texts) == len(golds)
         self.texts = texts
         self.golds = golds
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.raw_samples = raw_samples  # Store raw samples for reference
 
     def __len__(self):
         return len(self.texts)
@@ -73,6 +90,18 @@ class CustomLMGenerationDataset(torch.utils.data.DataLoader):
             len(input_ids),
             self.golds[idx],
         )
+    
+    def get_raw_sample(self, idx):
+        """Get the raw sample at index idx."""
+        if self.raw_samples is not None:
+            return self.raw_samples[idx]
+        return None
+    
+    def get_encoded_text(self, idx):
+        """Get the encoded/verbalized text at index idx."""
+        if self.texts is not None and idx < len(self.texts):
+            return self.texts[idx]
+        return None
 
 
 class Template:
