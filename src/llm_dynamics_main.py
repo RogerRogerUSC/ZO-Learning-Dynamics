@@ -315,6 +315,15 @@ def save_results(results: dict, output_dir: Path, config_path: str):
         
         combined_results["samples"].append(sample_data)
     
+    # Add test accuracy trajectory
+    combined_results["test_accuracy"] = {
+        "eval_at_iterations": results["eval_iterations_log"],
+        "sgd_acc_history": results["sgd_acc_history"],
+        "zo_acc_history": results["zo_acc_history"],
+        "sgd_loss_history": results["sgd_loss_history"],
+        "zo_loss_history": results["zo_loss_history"],
+    }
+
     # Generate filename with datetime (dd_mm_yyyy_hh_mm format)
     now = datetime.now()
     datetime_str = now.strftime("%d_%m_%Y_%H_%M")
@@ -513,6 +522,22 @@ def run_single_experiment(
         zo_logits_history[i].append(zo_initial_logits[i].clone())
         zo_probs_history[i].append(zo_initial_probs[i].clone())
     
+    # Initialize accuracy/loss history storage
+    sgd_acc_history: list[float] = []
+    zo_acc_history: list[float] = []
+    sgd_loss_history: list[float] = []
+    zo_loss_history: list[float] = []
+    eval_iterations_log: list[int] = []
+
+    # Initial evaluation (iteration 0, before training)
+    sgd_eval_loss_0, sgd_eval_acc_0 = sgd_trainer.eval_model(test_loader, False)
+    zo_eval_loss_0, zo_eval_acc_0 = zo_trainer.eval_model(test_loader, False)
+    sgd_acc_history.append(sgd_eval_acc_0)
+    zo_acc_history.append(zo_eval_acc_0)
+    sgd_loss_history.append(sgd_eval_loss_0)
+    zo_loss_history.append(zo_eval_loss_0)
+    eval_iterations_log.append(0)
+
     # Create a shared data iterator so both trainers see the same batches
     # This ensures a fair comparison between SGD and ZO
     # CRITICAL: Each trainer's train_one_step() calls next(self.data_iterator) independently,
@@ -586,6 +611,11 @@ def run_single_experiment(
             zo_eval_loss, zo_eval_acc = zo_trainer.eval_model(test_loader, False)
             print(f"  SGD - Eval Loss: {sgd_eval_loss:.4f}, Eval Acc: {sgd_eval_acc:.4f}")
             print(f"  ZO  - Eval Loss: {zo_eval_loss:.4f}, Eval Acc: {zo_eval_acc:.4f}")
+            sgd_acc_history.append(sgd_eval_acc)
+            zo_acc_history.append(zo_eval_acc)
+            sgd_loss_history.append(sgd_eval_loss)
+            zo_loss_history.append(zo_eval_loss)
+            eval_iterations_log.append(iteration + 1)
     
     # Extract final logits and probabilities (after training)
     sgd_final_logits, sgd_final_probs, zo_final_logits, zo_final_probs = extract_logits()
@@ -658,6 +688,11 @@ def run_single_experiment(
         "test_raw_sentences": test_raw_sentences,
         "test_encoded_texts": test_encoded_texts,
         "verbalizer_id_list": verbalizer_id_list,
+        "sgd_acc_history": sgd_acc_history,
+        "zo_acc_history": zo_acc_history,
+        "sgd_loss_history": sgd_loss_history,
+        "zo_loss_history": zo_loss_history,
+        "eval_iterations_log": eval_iterations_log,
     }
 
 
