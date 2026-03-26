@@ -1,30 +1,56 @@
 #!/bin/bash
 
 # Script to run all configs in dynamics_experiments directory
-# Usage: ./run_all_dynamics_experiments.sh [--num-test-samples N]
+# Usage: ./run_all_dynamics_experiments.sh [--task TASK] [--num-test-samples N]
+#   --task      Optional: run only configs under dynamics_experiments/TASK/ (e.g. sst2, sst5)
+#   --num-test-samples  Number of test samples (default: 5)
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-CONFIGS_DIR="$SCRIPT_DIR/zo_llm/configs/text_classification/dynamics_experiments"
+CONFIGS_ROOT="$SCRIPT_DIR/zo_llm/configs/text_classification"
+DYNAMICS_DIR="$CONFIGS_ROOT/dynamics_experiments"
 
 # Parse optional arguments
 NUM_TEST_SAMPLES=5
-if [[ "$1" == "--num-test-samples" ]] && [[ -n "$2" ]]; then
-    NUM_TEST_SAMPLES="$2"
-fi
+TASK_FILTER=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --num-test-samples)
+            NUM_TEST_SAMPLES="$2"
+            shift 2
+            ;;
+        --task)
+            TASK_FILTER="$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # Check if configs directory exists
-if [ ! -d "$CONFIGS_DIR" ]; then
-    echo "Error: Configs directory not found: $CONFIGS_DIR"
+if [ ! -d "$DYNAMICS_DIR" ]; then
+    echo "Error: Configs directory not found: $DYNAMICS_DIR"
     exit 1
 fi
 
-# Find all YAML files in dynamics_experiments
-CONFIG_FILES=("$CONFIGS_DIR"/*.yaml)
+# Find YAML files recursively, optionally filtered by task
+if [ -n "$TASK_FILTER" ]; then
+    SEARCH_DIR="$DYNAMICS_DIR/$TASK_FILTER"
+    if [ ! -d "$SEARCH_DIR" ]; then
+        echo "Error: Task directory not found: $SEARCH_DIR"
+        exit 1
+    fi
+    mapfile -t CONFIG_FILES < <(find "$SEARCH_DIR" -name "*.yaml" | sort)
+else
+    mapfile -t CONFIG_FILES < <(find "$DYNAMICS_DIR" -name "*.yaml" | sort)
+fi
 
 # Check if any config files were found
-if [ ${#CONFIG_FILES[@]} -eq 0 ] || [ ! -f "${CONFIG_FILES[0]}" ]; then
-    echo "Error: No YAML config files found in $CONFIGS_DIR"
+if [ ${#CONFIG_FILES[@]} -eq 0 ]; then
+    echo "Error: No YAML config files found"
     exit 1
 fi
 
@@ -44,14 +70,15 @@ FAILED_CONFIGS=()
 for i in "${!CONFIG_FILES[@]}"; do
     CONFIG_FILE="${CONFIG_FILES[$i]}"
     CONFIG_NAME=$(basename "$CONFIG_FILE")
-    CONFIG_RELATIVE_PATH="text_classification/dynamics_experiments/$CONFIG_NAME"
-    
+    # Compute path relative to CONFIGS_ROOT so llm_dynamics_main.py can resolve it
+    CONFIG_RELATIVE_PATH="${CONFIG_FILE#$CONFIGS_ROOT/}"
+
     # Calculate progress
     PROGRESS=$((i + 1))
-    
-    echo "[$PROGRESS/$TOTAL_CONFIGS] Running: $CONFIG_NAME"
+
+    echo "[$PROGRESS/$TOTAL_CONFIGS] Running: $CONFIG_RELATIVE_PATH"
     echo "----------------------------------------"
-    
+
     # Run the experiment
     if uv run "$SCRIPT_DIR/llm_dynamics_main.py" \
         --config-path "$CONFIG_RELATIVE_PATH" \
@@ -61,9 +88,9 @@ for i in "${!CONFIG_FILES[@]}"; do
     else
         echo "✗ Failed: $CONFIG_NAME"
         ((FAILURE_COUNT++))
-        FAILED_CONFIGS+=("$CONFIG_NAME")
+        FAILED_CONFIGS+=("$CONFIG_RELATIVE_PATH")
     fi
-    
+
     echo ""
 done
 

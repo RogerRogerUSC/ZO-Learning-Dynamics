@@ -141,6 +141,18 @@ class SST2Template(ClassificationTemplate):
         return f"{self.verbalize_for_pred(sample)}{self.verbalizer[label]}"
 
 
+class SST5Template(ClassificationTemplate):
+    verbalizer = {0: " awful", 1: " bad", 2: " neutral", 3: " good", 4: " excellent"}
+
+    def verbalize_for_pred(self, sample):
+        text = sample["text"].strip()
+        return f"{text} It was"
+
+    def verbalize(self, sample):
+        label = sample["label"]
+        return f"{self.verbalize_for_pred(sample)}{self.verbalizer[label]}"
+
+
 class QQPTemplate(ClassificationTemplate):
     verbalizer = {0: " No", 1: " Yes"}
 
@@ -274,6 +286,7 @@ class XSUMTemplate(Template):
 
 class LmClassificationTask(Enum):
     sst2 = "sst2"
+    sst5 = "sst5"
     rte = "rte"
     multirc = "multirc"
     cb = "cb"
@@ -291,6 +304,7 @@ class LmGenerationTask(Enum):
 
 LM_DATASET_MAP = {
     LmClassificationTask.sst2.name: "glue",
+    LmClassificationTask.sst5.name: "SetFit/sst5",
     LmClassificationTask.rte.name: "super_glue",
     LmClassificationTask.multirc.name: "super_glue",
     LmClassificationTask.cb.name: "super_glue",
@@ -303,8 +317,22 @@ LM_DATASET_MAP = {
     LmGenerationTask.xsum.name: "xsum",
 }
 
+# HF config name for each classification task; None means standalone dataset (no config arg)
+LM_DATASET_CONFIG_MAP = {
+    LmClassificationTask.sst2.name: "sst2",
+    LmClassificationTask.sst5.name: None,
+    LmClassificationTask.rte.name: "rte",
+    LmClassificationTask.multirc.name: "multirc",
+    LmClassificationTask.cb.name: "cb",
+    LmClassificationTask.wic.name: "wic",
+    LmClassificationTask.wsc.name: "wsc",
+    LmClassificationTask.boolq.name: "boolq",
+    LmClassificationTask.qqp.name: "qqp",
+}
+
 LM_TEMPLATE_MAP = {
     LmClassificationTask.sst2.name: SST2Template,
+    LmClassificationTask.sst5.name: SST5Template,
     LmClassificationTask.rte.name: RTETemplate,
     LmClassificationTask.multirc.name: MultiRCTemplate,
     LmClassificationTask.cb.name: CBTemplate,

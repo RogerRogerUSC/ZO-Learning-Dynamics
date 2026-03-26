@@ -3,6 +3,7 @@ from datasets import load_dataset as huggingface_load_dataset
 
 from zo_llm.util.config_parser import MyConfig
 from zo_llm.util.language_utils import (
+    LM_DATASET_CONFIG_MAP,
     LM_DATASET_MAP,
     LM_TEMPLATE_MAP,
     CustomLMDataset,
@@ -23,12 +24,18 @@ def get_dataloaders(
 ]:
     if data_setting.dataset == LmClassificationTask.sst2:
         max_length = 32
+    elif data_setting.dataset == LmClassificationTask.sst5:
+        max_length = 64
     else:
         max_length = 2048
 
     if isinstance(data_setting.dataset, LmClassificationTask):
-        dataset = huggingface_load_dataset(
-            LM_DATASET_MAP[data_setting.dataset.value], data_setting.dataset.value
+        dataset_name = LM_DATASET_MAP[data_setting.dataset.value]
+        config_name = LM_DATASET_CONFIG_MAP[data_setting.dataset.name]
+        dataset = (
+            huggingface_load_dataset(dataset_name, config_name)
+            if config_name
+            else huggingface_load_dataset(dataset_name)
         )
         raw_train_dataset = dataset["train"]
         raw_test_dataset = dataset["validation"]
