@@ -7,8 +7,8 @@
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-CONFIGS_ROOT="$SCRIPT_DIR/zo_llm/configs/text_classification"
-DYNAMICS_DIR="$CONFIGS_ROOT/dynamics_experiments"
+CONFIGS_ROOT="$SCRIPT_DIR/zo_llm/configs"
+DYNAMICS_DIR="$CONFIGS_ROOT/text_classification/dynamics_experiments"
 
 # Parse optional arguments
 NUM_TEST_SAMPLES=5
