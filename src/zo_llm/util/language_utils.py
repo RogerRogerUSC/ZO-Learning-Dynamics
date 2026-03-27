@@ -284,6 +284,25 @@ class XSUMTemplate(Template):
         return f"Document: {document}\n{prompt}{summary}"
 
 
+class YahooAnswersTemplate(ClassificationTemplate):
+    verbalizer = {
+        0: " society",
+        1: " science",
+        2: " health",
+        3: " education",
+        4: " computer",
+        5: " sports",
+        6: " business",
+        7: " entertainment",
+        8: " family",
+        9: " politics",
+    }
+
+    def verbalize_for_pred(self, sample):
+        title = sample["question_title"].strip()
+        return f"Question: {title}\nCategory:"
+
+
 class LmClassificationTask(Enum):
     sst2 = "sst2"
     sst5 = "sst5"
@@ -294,6 +313,7 @@ class LmClassificationTask(Enum):
     wsc = "wsc"
     boolq = "boolq"
     qqp = "qqp"
+    yahoo_answers = "yahoo_answers"
 
 
 class LmGenerationTask(Enum):
@@ -312,6 +332,7 @@ LM_DATASET_MAP = {
     LmClassificationTask.wsc.name: "super_glue",
     LmClassificationTask.boolq.name: "super_glue",
     LmClassificationTask.qqp.name: "glue",
+    LmClassificationTask.yahoo_answers.name: "yassiracharki/Yahoo_Answers_10_categories_for_NLP",
     LmGenerationTask.squad.name: "squad",
     LmGenerationTask.drop.name: "drop",
     LmGenerationTask.xsum.name: "xsum",
@@ -328,6 +349,7 @@ LM_DATASET_CONFIG_MAP = {
     LmClassificationTask.wsc.name: "wsc",
     LmClassificationTask.boolq.name: "boolq",
     LmClassificationTask.qqp.name: "qqp",
+    LmClassificationTask.yahoo_answers.name: None,
 }
 
 LM_TEMPLATE_MAP = {
@@ -340,6 +362,7 @@ LM_TEMPLATE_MAP = {
     LmClassificationTask.wsc.name: WSCTemplate,
     LmClassificationTask.boolq.name: BoolQTemplate,
     LmClassificationTask.qqp.name: QQPTemplate,
+    LmClassificationTask.yahoo_answers.name: YahooAnswersTemplate,
     LmGenerationTask.squad.name: SQuADTemplate,
     LmGenerationTask.drop.name: DROPTemplate,
     LmGenerationTask.xsum.name: XSUMTemplate,

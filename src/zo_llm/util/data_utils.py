@@ -1,4 +1,5 @@
 import torch
+from datasets import concatenate_datasets
 from datasets import load_dataset as huggingface_load_dataset
 
 from zo_llm.util.config_parser import MyConfig
@@ -26,6 +27,8 @@ def get_dataloaders(
         max_length = 32
     elif data_setting.dataset == LmClassificationTask.sst5:
         max_length = 64
+    elif data_setting.dataset == LmClassificationTask.yahoo_answers:
+        max_length = 128
     else:
         max_length = 2048
 
@@ -37,8 +40,29 @@ def get_dataloaders(
             if config_name
             else huggingface_load_dataset(dataset_name)
         )
-        raw_train_dataset = dataset["train"]
-        raw_test_dataset = dataset["validation"]
+        if data_setting.dataset == LmClassificationTask.yahoo_answers:
+            # Remap 1-indexed topic (1–10) to 0-indexed label (0–9)
+            def remap_label(sample):
+                sample["label"] = sample["class_index"] - 1
+                return sample
+
+            n_classes = 10
+            train_splits = []
+            test_splits = []
+            train_by_class = dataset["train"].map(remap_label)
+            test_by_class = dataset["test"].map(remap_label)
+            for cls in range(n_classes):
+                train_splits.append(
+                    train_by_class.filter(lambda x, c=cls: x["label"] == c).select(range(1000))
+                )
+                test_splits.append(
+                    test_by_class.filter(lambda x, c=cls: x["label"] == c).select(range(100))
+                )
+            raw_train_dataset = concatenate_datasets(train_splits)
+            raw_test_dataset = concatenate_datasets(test_splits)
+        else:
+            raw_train_dataset = dataset["train"]
+            raw_test_dataset = dataset["validation"]
         tokenizer = get_hf_tokenizer(hf_model_name)
         template = LM_TEMPLATE_MAP[data_setting.dataset.value]()
         encoded_train_texts = list(map(template.verbalize, raw_train_dataset))
