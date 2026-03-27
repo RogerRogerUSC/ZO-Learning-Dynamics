@@ -1,18 +1,21 @@
 #!/bin/bash
 
 # Script to run all configs in dynamics_experiments directory
-# Usage: ./run_all_dynamics_experiments.sh [--task TASK] [--num-test-samples N]
+# Usage: ./run_all_dynamics_experiments.sh [--task TASK] [--num-test-samples N] [--force]
 #   --task      Optional: run only configs under dynamics_experiments/TASK/ (e.g. sst2, sst5)
 #   --num-test-samples  Number of test samples (default: 5)
+#   --force     Skip the "already done" check and re-run all configs
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 CONFIGS_ROOT="$SCRIPT_DIR/zo_llm/configs"
 DYNAMICS_DIR="$CONFIGS_ROOT/text_classification/dynamics_experiments"
 
 # Parse optional arguments
 NUM_TEST_SAMPLES=5
 TASK_FILTER=""
+FORCE=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -23,6 +26,10 @@ while [[ $# -gt 0 ]]; do
         --task)
             TASK_FILTER="$2"
             shift 2
+            ;;
+        --force)
+            FORCE=true
+            shift
             ;;
         *)
             shift
@@ -64,17 +71,35 @@ echo ""
 # Track success and failures
 SUCCESS_COUNT=0
 FAILURE_COUNT=0
+SKIPPED_COUNT=0
 FAILED_CONFIGS=()
 
 # Run each config file
 for i in "${!CONFIG_FILES[@]}"; do
     CONFIG_FILE="${CONFIG_FILES[$i]}"
-    CONFIG_NAME=$(basename "$CONFIG_FILE")
+    CONFIG_NAME=$(basename "$CONFIG_FILE" .yaml)
     # Compute path relative to CONFIGS_ROOT so llm_dynamics_main.py can resolve it
     CONFIG_RELATIVE_PATH="${CONFIG_FILE#$CONFIGS_ROOT/}"
+    CONFIG_DIR=$(dirname "$CONFIG_RELATIVE_PATH")
 
     # Calculate progress
     PROGRESS=$((i + 1))
+
+    # Check if result folder already has output (single-model: config_name/, multi-model: config_name_*/))
+    RESULTS_BASE="$REPO_ROOT/results/$CONFIG_DIR/01_21_2026"
+    ALREADY_DONE=false
+    for result_dir in "$RESULTS_BASE/$CONFIG_NAME" "$RESULTS_BASE/${CONFIG_NAME}_"*; do
+        if [ -d "$result_dir" ] && [ -n "$(ls -A "$result_dir" 2>/dev/null)" ]; then
+            ALREADY_DONE=true
+            break
+        fi
+    done
+
+    if [ "$ALREADY_DONE" = true ] && [ "$FORCE" = false ]; then
+        echo "[$PROGRESS/$TOTAL_CONFIGS] Skipping (results exist): $CONFIG_RELATIVE_PATH"
+        ((SKIPPED_COUNT++))
+        continue
+    fi
 
     echo "[$PROGRESS/$TOTAL_CONFIGS] Running: $CONFIG_RELATIVE_PATH"
     echo "----------------------------------------"
@@ -98,6 +123,7 @@ done
 echo "=========================================="
 echo "Summary:"
 echo "  Total configs: $TOTAL_CONFIGS"
+echo "  Skipped (already done): $SKIPPED_COUNT"
 echo "  Successful: $SUCCESS_COUNT"
 echo "  Failed: $FAILURE_COUNT"
 echo ""
