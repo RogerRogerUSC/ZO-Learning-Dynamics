@@ -34,11 +34,12 @@ def get_hf_tokenizer(hf_model_name):
 
 
 class CustomLMDataset(torch.utils.data.DataLoader):
-    def __init__(self, texts, labels, tokenizer, max_length):
+    def __init__(self, texts, labels=None, tokenizer=None, max_length=None, raw_samples=None):
         self.texts = texts
         self.labels = labels
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.raw_samples = raw_samples  # Store raw samples for reference
 
     def __len__(self):
         return len(self.texts)
@@ -49,16 +50,32 @@ class CustomLMDataset(torch.utils.data.DataLoader):
         # left_truncation
         if len(input_ids) > self.max_length:
             input_ids = input_ids[-self.max_length :]
-        return torch.tensor(input_ids, dtype=torch.long), self.labels[idx]
+        if self.labels is not None:
+            return torch.tensor(input_ids, dtype=torch.long), self.labels[idx]
+        else:
+            return torch.tensor(input_ids, dtype=torch.long)
+    
+    def get_raw_sample(self, idx):
+        """Get the raw sample at index idx."""
+        if self.raw_samples is not None:
+            return self.raw_samples[idx]
+        return None
+    
+    def get_encoded_text(self, idx):
+        """Get the encoded/verbalized text at index idx."""
+        if self.texts is not None and idx < len(self.texts):
+            return self.texts[idx]
+        return None
 
 
 class CustomLMGenerationDataset(torch.utils.data.DataLoader):
-    def __init__(self, texts, golds, tokenizer, max_length):
+    def __init__(self, texts, golds, tokenizer, max_length, raw_samples=None):
         assert len(texts) == len(golds)
         self.texts = texts
         self.golds = golds
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.raw_samples = raw_samples  # Store raw samples for reference
 
     def __len__(self):
         return len(self.texts)
@@ -73,6 +90,18 @@ class CustomLMGenerationDataset(torch.utils.data.DataLoader):
             len(input_ids),
             self.golds[idx],
         )
+    
+    def get_raw_sample(self, idx):
+        """Get the raw sample at index idx."""
+        if self.raw_samples is not None:
+            return self.raw_samples[idx]
+        return None
+    
+    def get_encoded_text(self, idx):
+        """Get the encoded/verbalized text at index idx."""
+        if self.texts is not None and idx < len(self.texts):
+            return self.texts[idx]
+        return None
 
 
 class Template:
@@ -105,6 +134,18 @@ class SST2Template(ClassificationTemplate):
 
     def verbalize_for_pred(self, sample):
         text = sample["sentence"].strip()
+        return f"{text} It was"
+
+    def verbalize(self, sample):
+        label = sample["label"]
+        return f"{self.verbalize_for_pred(sample)}{self.verbalizer[label]}"
+
+
+class SST5Template(ClassificationTemplate):
+    verbalizer = {0: " awful", 1: " bad", 2: " neutral", 3: " good", 4: " excellent"}
+
+    def verbalize_for_pred(self, sample):
+        text = sample["text"].strip()
         return f"{text} It was"
 
     def verbalize(self, sample):
@@ -243,8 +284,28 @@ class XSUMTemplate(Template):
         return f"Document: {document}\n{prompt}{summary}"
 
 
+class YahooAnswersTemplate(ClassificationTemplate):
+    verbalizer = {
+        0: " society",
+        1: " science",
+        2: " health",
+        3: " education",
+        4: " computer",
+        5: " sports",
+        6: " business",
+        7: " entertainment",
+        8: " family",
+        9: " politics",
+    }
+
+    def verbalize_for_pred(self, sample):
+        title = sample["question_title"].strip()
+        return f"Question: {title}\nCategory:"
+
+
 class LmClassificationTask(Enum):
     sst2 = "sst2"
+    sst5 = "sst5"
     rte = "rte"
     multirc = "multirc"
     cb = "cb"
@@ -252,6 +313,7 @@ class LmClassificationTask(Enum):
     wsc = "wsc"
     boolq = "boolq"
     qqp = "qqp"
+    yahoo_answers = "yahoo_answers"
 
 
 class LmGenerationTask(Enum):
@@ -262,6 +324,7 @@ class LmGenerationTask(Enum):
 
 LM_DATASET_MAP = {
     LmClassificationTask.sst2.name: "glue",
+    LmClassificationTask.sst5.name: "SetFit/sst5",
     LmClassificationTask.rte.name: "super_glue",
     LmClassificationTask.multirc.name: "super_glue",
     LmClassificationTask.cb.name: "super_glue",
@@ -269,13 +332,29 @@ LM_DATASET_MAP = {
     LmClassificationTask.wsc.name: "super_glue",
     LmClassificationTask.boolq.name: "super_glue",
     LmClassificationTask.qqp.name: "glue",
+    LmClassificationTask.yahoo_answers.name: "yassiracharki/Yahoo_Answers_10_categories_for_NLP",
     LmGenerationTask.squad.name: "squad",
     LmGenerationTask.drop.name: "drop",
     LmGenerationTask.xsum.name: "xsum",
 }
 
+# HF config name for each classification task; None means standalone dataset (no config arg)
+LM_DATASET_CONFIG_MAP = {
+    LmClassificationTask.sst2.name: "sst2",
+    LmClassificationTask.sst5.name: None,
+    LmClassificationTask.rte.name: "rte",
+    LmClassificationTask.multirc.name: "multirc",
+    LmClassificationTask.cb.name: "cb",
+    LmClassificationTask.wic.name: "wic",
+    LmClassificationTask.wsc.name: "wsc",
+    LmClassificationTask.boolq.name: "boolq",
+    LmClassificationTask.qqp.name: "qqp",
+    LmClassificationTask.yahoo_answers.name: None,
+}
+
 LM_TEMPLATE_MAP = {
     LmClassificationTask.sst2.name: SST2Template,
+    LmClassificationTask.sst5.name: SST5Template,
     LmClassificationTask.rte.name: RTETemplate,
     LmClassificationTask.multirc.name: MultiRCTemplate,
     LmClassificationTask.cb.name: CBTemplate,
@@ -283,6 +362,7 @@ LM_TEMPLATE_MAP = {
     LmClassificationTask.wsc.name: WSCTemplate,
     LmClassificationTask.boolq.name: BoolQTemplate,
     LmClassificationTask.qqp.name: QQPTemplate,
+    LmClassificationTask.yahoo_answers.name: YahooAnswersTemplate,
     LmGenerationTask.squad.name: SQuADTemplate,
     LmGenerationTask.drop.name: DROPTemplate,
     LmGenerationTask.xsum.name: XSUMTemplate,

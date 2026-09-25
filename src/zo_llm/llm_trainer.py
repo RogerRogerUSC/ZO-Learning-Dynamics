@@ -65,7 +65,7 @@ class LLM_trainer:
 
         return train_loss.avg, train_acc.avg
 
-    def eval_model(self, test_loader: Iterable[Any]) -> tuple[float, float]:
+    def eval_model(self, test_loader: Iterable[Any], print_info: bool = True) -> tuple[float, float]:
         self.model.eval()
         eval_loss = Metric("Eval loss")
         eval_acc = Metric("Eval acc")
@@ -79,10 +79,11 @@ class LLM_trainer:
                 pred = self.model_inference(self.model, batch_inputs)
                 eval_loss.update(self.criterion(pred, batch_labels))
                 eval_acc.update(self.accuracy_func(pred, batch_labels))
-        print(
-            # f"\nEvaluation(Iteration {self.seed_grad_records.current_iteration}): ",
-            f"Eval Loss:{eval_loss.avg:.4f}, Eval Acc:{eval_acc.avg * 100:.2f}%",
-        )
+        if print_info:
+            print(
+                # f"\nEvaluation(Iteration {self.seed_grad_records.current_iteration}): ",
+                f"Eval Loss:{eval_loss.avg:.4f}, Eval Acc:{eval_acc.avg * 100:.2f}%",
+            )
         return eval_loss.avg, eval_acc.avg
 
     def _get_train_batch_iterator(self) -> Iterator:

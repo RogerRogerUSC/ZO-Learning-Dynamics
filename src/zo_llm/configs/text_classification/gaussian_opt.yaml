@@ -1,7 +1,7 @@
 # General
 device: "cuda"
 large_model: "opt-125m"
-model_dtype: "float32"
+model_dtype: "float16"
 
 # training parameters
 lr: 0.000005
@@ -14,9 +14,9 @@ train_batch_size: 32
 test_batch_size: 32
 
 # zo parameters
-estimator_type: 'vanilla'
-grad_estimate_method: 'rge-central'
-pert_distribution: 'gaussian'
+estimator_type: "vanilla"
+grad_estimate_method: "rge-central"
+pert_distribution: "gaussian"
 num_pert: 5
 mu: 0.001
 
